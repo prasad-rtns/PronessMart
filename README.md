@@ -6,68 +6,412 @@
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## 🏗️ Architecture
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **API Gateway**: Nginx (Single point of contact)
+- **Microservices**: User, Product, Cart, Order
+- **Databases**: MongoDB (User, Product, Cart), MySQL (Order), Redis (Cache)
+- **Message Queue**: Apache Kafka
+- **Monitoring**: Prometheus & Grafana
+- **Authentication**: JWT tokens
+- **Documentation**: Swagger/OpenAPI
 
-## Add your files
+## 📋 Prerequisites
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+- Docker & Docker Compose
+- Node.js 18+ (for local development)
+- Git
+
+## 🚀 Quick Start
+
+### 1. Clone and Setup
+
+```bash
+git clone 
+cd ecommerce-microservices
+
+# Copy environment files
+cp .env.example .env
+cp user-service/.env.example user-service/.env
+cp product-service/.env.example product-service/.env
+cp cart-service/.env.example cart-service/.env
+cp order-service/.env.example order-service/.env
+
+# Update .env files with secure values
+```
+
+### 2. Start All Services
+
+```bash
+# Build and start all containers
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f user-service
+```
+
+### 3. Verify Services
+
+```bash
+# Check if all containers are running
+docker-compose ps
+
+# Test API Gateway
+curl http://localhost/health
+
+# Test individual services
+curl http://localhost:3001/health  # User Service
+curl http://localhost:3002/health  # Product Service
+curl http://localhost:3003/health  # Cart Service
+curl http://localhost:3004/health  # Order Service
+```
+
+## 🔌 API Endpoints
+
+### User Service (Authentication)
+
+```bash
+# Register
+POST http://localhost/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "securePass123",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+
+# Login
+POST http://localhost/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "password": "securePass123"
+}
+
+# Get User (requires token)
+GET http://localhost/api/v1/users/{userId}
+Authorization: Bearer 
+
+# Update User (requires token)
+PUT http://localhost/api/v1/users/{userId}
+Authorization: Bearer 
+
+# Delete User (requires token)
+DELETE http://localhost/api/v1/users/{userId}
+Authorization: Bearer 
+```
+
+### Product Service
+
+```bash
+# Get All Products (public)
+GET http://localhost/api/v1/products?category=electronics&page=1&limit=20
+
+# Get Product by ID (public)
+GET http://localhost/api/v1/products/{productId}
+
+# Create Product (requires token)
+POST http://localhost/api/v1/products
+Authorization: Bearer 
+Content-Type: application/json
+
+{
+  "name": "iPhone 15 Pro",
+  "description": "Latest iPhone model",
+  "price": 999.99,
+  "category": "electronics",
+  "sku": "IPH15PRO",
+  "stock": 50,
+  "images": [{"url": "https://example.com/image.jpg"}]
+}
+```
+
+### Cart Service
+
+```bash
+# Get Cart (requires token)
+GET http://localhost/api/v1/cart/{userId}
+Authorization: Bearer 
+
+# Add Item to Cart (requires token)
+POST http://localhost/api/v1/cart/{userId}/items
+Authorization: Bearer 
+Content-Type: application/json
+
+{
+  "productId": "product_id_here",
+  "name": "iPhone 15 Pro",
+  "price": 999.99,
+  "quantity": 1,
+  "sku": "IPH15PRO"
+}
+
+# Update Cart Item (requires token)
+PUT http://localhost/api/v1/cart/{userId}/items/{itemId}
+Authorization: Bearer 
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+# Remove Item from Cart (requires token)
+DELETE http://localhost/api/v1/cart/{userId}/items/{itemId}
+Authorization: Bearer 
+```
+
+### Order Service
+
+```bash
+# Create Order (requires token)
+POST http://localhost/api/v1/orders
+Authorization: Bearer 
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "product_id",
+      "name": "iPhone 15 Pro",
+      "price": 999.99,
+      "quantity": 1,
+      "sku": "IPH15PRO"
+    }
+  ],
+  "shippingAddress": {
+    "street": "123 Main St",
+    "city": "New York",
+    "state": "NY",
+    "zipCode": "10001",
+    "country": "USA"
+  },
+  "paymentMethod": "credit_card"
+}
+
+# Get Order by ID (requires token)
+GET http://localhost/api/v1/orders/{orderId}
+Authorization: Bearer 
+
+# Get User Orders (requires token)
+GET http://localhost/api/v1/users/{userId}/orders
+Authorization: Bearer 
+
+# Update Order Status (requires token)
+PATCH http://localhost/api/v1/orders/{orderId}/status
+Authorization: Bearer 
+Content-Type: application/json
+
+{
+  "status": "shipped"
+}
+```
+
+## 📊 Monitoring & Documentation
+
+### Swagger Documentation
+- User Service: http://localhost/api/v1/users/docs
+- Product Service: http://localhost/api/v1/products/docs
+- Cart Service: http://localhost/api/v1/cart/docs
+- Order Service: http://localhost/api/v1/orders/docs
+
+### Monitoring Dashboards
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **Kafka UI**: http://localhost:8080
+
+## 🧪 Testing
+
+### Run Unit Tests
+
+```bash
+# Test all services
+docker-compose exec user-service npm test
+docker-compose exec product-service npm test
+docker-compose exec cart-service npm test
+docker-compose exec order-service npm test
+
+# Run with coverage
+docker-compose exec user-service npm test -- --coverage
+```
+
+### Manual Testing with cURL
+
+```bash
+# Complete workflow example
+# 1. Register
+curl -X POST http://localhost/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","email":"test@example.com","password":"password123"}'
+
+# 2. Login and get token
+TOKEN=$(curl -X POST http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}' \
+  | jq -r '.data.token')
+
+# 3. Get user profile
+curl http://localhost/api/v1/users/{userId} \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Get products
+curl http://localhost/api/v1/products?category=electronics
+
+# 5. Add to cart
+curl -X POST http://localhost/api/v1/cart/{userId}/items \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"productId":"prod123","name":"Product","price":99.99,"quantity":1}'
+
+# 6. Create order
+curl -X POST http://localhost/api/v1/orders \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"items":[...],"shippingAddress":{...}}'
+```
+
+## 🛠️ Development
+
+### Local Development Setup
+
+```bash
+# Install dependencies for a service
+cd user-service
+npm install
+
+# Run in development mode
+npm run dev
+
+# Run tests
+npm test
+```
+
+### Adding New Services
+
+1. Create service directory with structure
+2. Add to `docker-compose.yml`
+3. Update nginx configuration
+4. Add to monitoring
+
+## 📁 Project Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/intertec-mates/pronessmart.git
-git branch -M main
-git push -uf origin main
+ecommerce-microservices/
+├── api-gateway/           # Nginx API Gateway
+├── user-service/          # User management & auth
+├── product-service/       # Product catalog
+├── cart-service/          # Shopping cart with Redis
+├── order-service/         # Order management with MySQL
+├── monitoring/            # Prometheus & Grafana configs
+├── docker-compose.yml     # Main orchestration file
+└── README.md
 ```
 
-## Integrate with your tools
+## 🔒 Security Features
 
-- [ ] [Set up project integrations](https://gitlab.com/intertec-mates/pronessmart/-/settings/integrations)
+- JWT token-based authentication
+- Password hashing with bcrypt
+- Rate limiting on API Gateway
+- CORS configuration
+- Helmet security headers
+- Input validation
+- SQL injection prevention
+- XSS protection
 
-## Collaborate with your team
+## 🚦 Load Balancing & Scaling
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+# Scale a service
+docker-compose up -d --scale product-service=3
 
-## Test and Deploy
+# View scaled instances
+docker-compose ps
+```
 
-Use the built-in continuous integration in GitLab.
+## 🐛 Troubleshooting
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+### Services Not Starting
 
-***
+```bash
+# Check logs
+docker-compose logs -f [service-name]
 
-# Editing this README
+# Restart specific service
+docker-compose restart [service-name]
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+# Rebuild service
+docker-compose up -d --build [service-name]
+```
 
-## Suggestions for a good README
+### Database Connection Issues
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```bash
+# Check database containers
+docker-compose ps mongo-user mongo-product mongo-cart mysql redis
 
-## Name
-Choose a self-explaining name for your project.
+# Access database directly
+docker-compose exec mongo-user mongosh
+docker-compose exec mysql mysql -u root -p
+docker-compose exec redis redis-cli
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Clear All Data
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+# Stop and remove all containers and volumes
+docker-compose down -v
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+# Rebuild from scratch
+docker-compose up -d --build
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## 📝 Environment Variables
+
+Key environment variables to configure:
+
+- `JWT_SECRET`: Secret key for JWT tokens (min 32 characters)
+- `MYSQL_ROOT_PASSWORD`: MySQL root password
+- `MONGODB_URI`: MongoDB connection string
+- `REDIS_HOST`: Redis host
+- `KAFKA_BROKERS`: Kafka broker addresses
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+## 📄 License
+
+MIT License
+
+## 👥 Support
+
+For issues and questions:
+- Create an issue on GitHub
+- Check documentation
+- Review logs for errors
+
+## 🎯 Future Enhancements
+
+- [ ] Add payment gateway integration
+- [ ] Implement email notifications
+- [ ] Add product reviews and ratings
+- [ ] Implement search service with Elasticsearch
+- [ ] Add admin dashboard
+- [ ] Implement OAuth2.0 social login
+- [ ] Add CI/CD pipeline
+- [ ] Kubernetes deployment configs
+- [ ] Add API rate limiting per user
+- [ ] Implement caching strategies
 
 ## Usage
 Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
