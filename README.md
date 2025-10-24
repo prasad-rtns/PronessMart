@@ -1,5 +1,7 @@
 # PRONESS-Mart
-
+### Shop Smart, Live Better – A Professional Growth Initiative
+- [ ] <span style="color: purple">PRONESS</span> — Prasad, Rajan, O representing collaboration, Nagendra, E (for excellence), Soujanya, Shivam
+- [ ] <span style="color: purple">Mart</span> — connects directly with e-commerce and digital retail
 
 
 ## Getting started
