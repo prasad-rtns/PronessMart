@@ -1,0 +1,65 @@
+# =====================================================
+# PRONESS-Mart E-Commerce Microservices Project
+# =====================================================
+
+# Node.js dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
+.env
+*/.env
+
+# Local development and build artifacts
+dist/
+build/
+coverage/
+logs/
+*/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Temporary files
+tmp/
+temp/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# IDE & editor configs
+.vscode/
+.idea/
+*.code-workspace
+
+# Docker files
+*.pid
+*.seed
+docker-compose.override.yml
+docker-compose.dev.yml
+
+# Test output & reports
+coverage/
+*.lcov
+*.spec.js
+jest-test-results.json
+
+# OS-specific files
+ehthumbs.db
+Desktop.ini
+
+# Lock files (optional if using single lock at root)
+*/package-lock.json
+*/yarn.lock
+
+# SSL keys and certs
+ssl/
+*/ssl/
+*.pem
+*.crt
+*.key
+*.csr
