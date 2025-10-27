@@ -14,8 +14,8 @@ services:
     depends_on:
       - user-service
       - product-service
-      #- cart-service
-      #- order-service
+      - cart-service
+      - order-service
     networks:
       - ecommerce-network
     restart: unless-stopped

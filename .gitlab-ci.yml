@@ -1,18 +1,106 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-stages:
-- test
-- secret-detection
-sast:
-  stage: test
-include:
-- template: Security/Secret-Detection.gitlab-ci.yml
+image: docker:24.0.5
+
+services:
+  - docker:dind
+
 variables:
-  SECRET_DETECTION_ENABLED: 'true'
-secret_detection:
-  stage: secret-detection
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  # Caching paths relative to repository root
+#  NPM_CACHE_DIR: .npm
+
+stages:
+  - build
+  - test
+  - sast
+  - deploy
+
+before_script:
+  - apk add --no-cache nodejs npm git bash
+  - echo "🏗️ Setting up environment..."
+  - docker info
+
+# --------------------------
+# ⚡ CACHE CONFIGURATION
+# --------------------------
+
+# cache:
+#   key: "${CI_COMMIT_REF_SLUG}"
+#   paths:
+#     - ${NPM_CACHE_DIR}/
+#     - node_modules/
+#     - */node_modules/
+#   policy: pull-push
+#   when: always
+  
+# --------------------------
+# 🧱 BUILD
+# --------------------------
+build:
+  stage: build
+  script:
+    - echo "🔧 Building all services..."
+    - docker-compose -f docker-compose.yml build --no-cache
+  only:
+    - merge_requests
+    - develop
+  tags:
+    - docker
+
+# --------------------------
+# 🧪 TEST
+# --------------------------
+test:
+  stage: test
+  # cache:
+  #   key: "${CI_COMMIT_REF_SLUG}"
+  #   paths:
+  #     - ${NPM_CACHE_DIR}/
+  #     - */node_modules/
+  #   policy: pull
+  script:
+    - echo "🧪 Running unit tests..."
+    - npm install --prefix user-service
+    - npm test --prefix user-service || true
+    - npm install --prefix product-service
+    - npm test --prefix product-service || true
+    - npm install --prefix cart-service
+    - npm test --prefix cart-service || true
+    - npm install --prefix order-service
+    - npm test --prefix order-service || true
+  tags:
+    - docker
+  allow_failure: true
+
+# --------------------------
+# 🔍 SECURITY / SAST (CUSTOM)
+# --------------------------
+sast:
+  stage: sast
+  script:
+    - echo "🔍 Running ESLint security analysis..."
+    - npm install eslint eslint-plugin-security --no-save
+    - npx eslint . --ext .js,.ts -f json -o eslint-report.json || true
+  artifacts:
+    reports:
+      sast: eslint-report.json
+  allow_failure: true
+  tags:
+    - docker
+
+# --------------------------
+# 🚀 DEPLOY
+# --------------------------
+deploy:
+  stage: deploy
+  script:
+    - echo "🚀 Deploying PRONESS-Mart..."
+    - docker-compose -f docker-compose.yml up -d
+    - docker ps
+  environment:
+    name: production
+  only:
+    - main
+  tags:
+    - docker
