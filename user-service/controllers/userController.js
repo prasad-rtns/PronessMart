@@ -31,16 +31,16 @@ exports.register = async (req, res, next) => {
 // Login user
 exports.login = async (req, res, next) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide username and password'
+        message: 'Please provide email and password'
       });
     }
 
-    const { user, token } = await userService.loginUser(username, password);
+    const { user, token } = await userService.loginUser(email, password);
 
     logger.info(`User logged in: ${user.email}`);
 

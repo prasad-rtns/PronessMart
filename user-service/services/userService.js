@@ -86,7 +86,7 @@ class UserService {
             return user;
         }
   
-        user = await UserQueries.findById(userId);
+        user = await userQueries.findById(userId);
         return user;
       } catch (error) {
         logger.error(`Error getting user: ${error.message}`);

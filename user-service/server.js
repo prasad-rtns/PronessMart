@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const connectDB = require('./config/database');
 const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const requestLogger = require('./middlewares/requestLogger');
 const logger = require('./utils/logger');
@@ -26,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
 // Swagger documentation
-app.use('/api/v1/users/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/v1/users/docs/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check (liveness)
 app.get('/health', (req, res) => {
@@ -54,7 +55,7 @@ app.get('/metrics', async (req, res) => {
 });
 
 // API routes
-app.use('/api/v1/auth', userRoutes);
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 
 // Error handler
