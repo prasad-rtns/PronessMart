@@ -6,32 +6,50 @@ const authMiddleware = require('../middlewares/authMiddleware');
 /**
  * @swagger
  * tags:
- *   name: Products
- *   description: Product catalog management APIs
+ *   - name: Products
+ *     description: Product catalog management APIs
  */
 
 /**
  * @swagger
  * /api/v1/products:
  *   get:
- *     summary: Get all products (supports filtering, pagination, and sorting)
- *     tags: [Products]
+ *     summary: Get all products cat(supports filtering, pagination, and sorting)
+ *     tags:
+ *       - Products
  *     parameters:
  *       - in: query
  *         name: category
+ *         required: false
  *         schema:
  *           type: string
- *         description: Filter by category
+ *         description: Filter products by category ID or slug
+ *       - in: query
+ *         name: subcategory
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter by subcategory name or slug
+ *       - in: query
+ *         name: region
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Region code to resolve regional pricing (e.g. US, IN)
  *       - in: query
  *         name: page
+ *         required: false
  *         schema:
  *           type: integer
- *         description: Page number (default: 1)
+ *           example: 1
+ *         description: Page number for pagination
  *       - in: query
  *         name: limit
+ *         required: false
  *         schema:
  *           type: integer
- *         description: Results per page (default: 20)
+ *           example: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: List of products

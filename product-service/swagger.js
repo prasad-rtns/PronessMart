@@ -57,6 +57,7 @@ const options = {
             description: { type: 'string', example: 'Latest smartphone with AI camera' },
             price: { type: 'number', example: 499.99 },
             category: { type: 'string', example: 'electronics' },
+            subcategory: { type: 'string', example: 'mobile' },
             sku: { type: 'string', example: 'ELEC-X12' },
             stock: { type: 'integer', example: 100 },
           },
