@@ -22,7 +22,8 @@ class UserService {
         firstName: userData.firstName,
         lastName: userData.lastName,
         phone: userData.phone,
-        address: userData.address
+        address: userData.address,
+        role: userData.role
       });
 
       return user;
