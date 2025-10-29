@@ -1,6 +1,37 @@
 const cartService = require('../services/cartService');
 const logger = require('../utils/logger');
 
+// Get All cart
+exports.getAllCarts = async (req, res, next) => {
+  try {
+    const { category, subcategory, minPrice, maxPrice, search, page = 1, limit = 20, sort = '-createdAt' } = req.query;
+
+    const filters = {};
+    if (category) filters.category = category;
+    if (subcategory) filters.subcategory = subcategory;
+    if (minPrice || maxPrice) {
+      filters.price = {};
+      if (minPrice) filters.price.$gte = parseFloat(minPrice);
+      if (maxPrice) filters.price.$lte = parseFloat(maxPrice);
+    }
+    if (search) filters.$text = { $search: search };
+
+    const carts = await cartService.getAllCarts(
+      filters,
+      parseInt(page),
+      parseInt(limit),
+      sort
+    );
+
+    res.status(200).json({
+      success: true,
+      data: carts
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get user's cart
 exports.getCart = async (req, res, next) => {
   try {

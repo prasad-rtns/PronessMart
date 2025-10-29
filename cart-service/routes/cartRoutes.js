@@ -9,6 +9,70 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *   name: Cart
  *   description: Manage shopping carts and cart items
  */
+/**
+ * @swagger
+ * tags:
+ *   - name: Cart
+ *     description: Manage shopping carts and cart items
+ */
+
+/**
+ * @swagger
+ * /api/v1/cart:
+ *   get:
+ *     summary: Get all Cart (supports filtering, pagination, and sorting)
+ *     tags:
+ *       - Cart
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter products by category ID or slug
+ *       - in: query
+ *         name: subcategory
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter by subcategory name or slug
+ *       - in: query
+ *         name: region
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Region code to resolve regional pricing (e.g. US, IN)
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           example: 20
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of carts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CartResponse'
+ */
+router.get('/', cartController.getAllCarts);
 
 /**
  * @swagger

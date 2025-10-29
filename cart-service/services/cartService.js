@@ -5,6 +5,15 @@ const logger = require('../utils/logger');
 const CART_CACHE_TTL = 3600; // 1 hour
 
 class CartService {
+  async getAllCarts(filters = {}, page = 1, limit = 20, sort = '-createdAt') {
+    try {
+      return await cartQueries.findAll(filters, page, limit, sort);
+    } catch (error) {
+      logger.error(`Error getting Carts: ${error.message}`);
+      throw error;
+    }
+  }
+
   async getCart(userId) {
     try {
       // Try to get from Redis cache first

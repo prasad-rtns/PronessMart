@@ -36,6 +36,16 @@ app.use(requestLogger);
 // Swagger Documentation
 app.use('/api/v1/cart/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    service: 'cart-service',
+    message: 'Cart Service is running 🚀',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ 
