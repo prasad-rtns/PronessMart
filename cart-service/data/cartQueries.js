@@ -7,6 +7,39 @@ const logger = require('../utils/logger');
  */
 
 class CartQueries {
+
+  /**
+   * Get all products with filters and pagination
+   */
+  async findAll(filters = {}, page = 1, limit = 20, sort = '-createdAt') {
+    try {
+      const skip = (page - 1) * limit;
+
+      // Add isActive filter by default
+      const queryFilters = { ...filters, isActive: true };
+
+      const carts = await Cart.find(queryFilters)
+        .skip(skip)
+        .limit(limit)
+        .sort(sort);
+
+      const total = await Cart.countDocuments(queryFilters);
+
+      return {
+        carts,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      logger.error(`Error in findAll query: ${error.message}`);
+      throw error;
+    }
+  }
+
   /**
    * Find cart by user ID
    */
