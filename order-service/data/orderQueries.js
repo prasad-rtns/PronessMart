@@ -19,15 +19,16 @@ class OrderQueries {
 
       const insertOrderQuery = `
         INSERT INTO orders (
-          id, user_id, order_number, status, subtotal, discount, 
+          id, user_id,quote_id, order_number, status, subtotal, discount, 
           shipping_cost, tax, total, payment_method, payment_status,
           shipping_address, billing_address, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       await connection.query(insertOrderQuery, [
         orderData.id,
         orderData.userId,
+        orderData.quoteId,
         orderData.orderNumber,
         orderData.status || 'pending',
         orderData.subtotal,
@@ -112,8 +113,19 @@ class OrderQueries {
       );
 
       order.items = items;
-      order.shippingAddress = JSON.parse(order.shipping_address);
-      order.billingAddress = JSON.parse(order.billing_address);
+      try {
+          order.shippingAddress = typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address;
+
+          order.billingAddress = typeof order.billing_address === 'string'
+            ? JSON.parse(order.billing_address)
+            : order.billing_address;
+        } catch (err) {
+          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+          order.shippingAddress = order.shipping_address;
+          order.billingAddress = order.billing_address;
+        }
 
       return order;
     } catch (error) {
@@ -147,8 +159,19 @@ class OrderQueries {
       );
 
       order.items = items;
-      order.shippingAddress = JSON.parse(order.shipping_address);
-      order.billingAddress = JSON.parse(order.billing_address);
+      try {
+        order.shippingAddress = typeof order.shipping_address === 'string'
+          ? JSON.parse(order.shipping_address)
+          : order.shipping_address;
+
+        order.billingAddress = typeof order.billing_address === 'string'
+          ? JSON.parse(order.billing_address)
+          : order.billing_address;
+      } catch (err) {
+        logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+        order.shippingAddress = order.shipping_address;
+        order.billingAddress = order.billing_address;
+      }
 
       return order;
     } catch (error) {
@@ -182,8 +205,19 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
-        order.shippingAddress = JSON.parse(order.shipping_address);
-        order.billingAddress = JSON.parse(order.billing_address);
+        try {
+          order.shippingAddress = typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address;
+
+          order.billingAddress = typeof order.billing_address === 'string'
+            ? JSON.parse(order.billing_address)
+            : order.billing_address;
+        } catch (err) {
+          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+          order.shippingAddress = order.shipping_address;
+          order.billingAddress = order.billing_address;
+        }
       }
 
       return {
@@ -321,8 +355,19 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
-        order.shippingAddress = JSON.parse(order.shipping_address);
-        order.billingAddress = JSON.parse(order.billing_address);
+        try {
+          order.shippingAddress = typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address;
+
+          order.billingAddress = typeof order.billing_address === 'string'
+            ? JSON.parse(order.billing_address)
+            : order.billing_address;
+        } catch (err) {
+          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+          order.shippingAddress = order.shipping_address;
+          order.billingAddress = order.billing_address;
+        }
       }
 
       return {
@@ -365,8 +410,19 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
-        order.shippingAddress = JSON.parse(order.shipping_address);
-        order.billingAddress = JSON.parse(order.billing_address);
+        try {
+          order.shippingAddress = typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address;
+
+          order.billingAddress = typeof order.billing_address === 'string'
+            ? JSON.parse(order.billing_address)
+            : order.billing_address;
+        } catch (err) {
+          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+          order.shippingAddress = order.shipping_address;
+          order.billingAddress = order.billing_address;
+        }
       }
 
       return {
@@ -586,8 +642,19 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
-        order.shippingAddress = JSON.parse(order.shipping_address);
-        order.billingAddress = JSON.parse(order.billing_address);
+        try {
+          order.shippingAddress = typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address;
+
+          order.billingAddress = typeof order.billing_address === 'string'
+            ? JSON.parse(order.billing_address)
+            : order.billing_address;
+        } catch (err) {
+          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+          order.shippingAddress = order.shipping_address;
+          order.billingAddress = order.billing_address;
+        }
       }
 
       return {

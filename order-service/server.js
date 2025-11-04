@@ -66,8 +66,9 @@ app.get('/metrics', async (req, res) => {
 });
 
 // Core routes
-app.use('/api/v1/orders', orderRoutes);
-app.use('/api/v1/users/:userId/orders', orderRoutes);
+//app.use('/api/v1/orders', orderRoutes);
+//app.use('/api/v1/users/:userId/orders', orderRoutes);
+app.use('/api/v1', orderRoutes);
 
 // Error handler
 app.use(errorHandler);

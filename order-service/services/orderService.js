@@ -26,6 +26,7 @@ class OrderService {
       const order = {
         id: orderId,
         userId: orderData.userId,
+        quoteId: orderData.quoteId,
         orderNumber,
         status: 'pending',
         subtotal,
@@ -39,7 +40,7 @@ class OrderService {
         billingAddress: orderData.billingAddress,
         notes: orderData.notes
       };
-
+      logger.info(`Creating order for user: ${orderData}`);
       // Create order
       await orderQueries.create(order);
 
