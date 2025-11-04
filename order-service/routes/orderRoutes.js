@@ -23,46 +23,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - items
- *               - shippingAddress
- *             properties:
- *               items:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     productId:
- *                       type: string
- *                       example: "664f9b86aab2a19b13df0f88"
- *                     name:
- *                       type: string
- *                       example: "Wireless Mouse"
- *                     price:
- *                       type: number
- *                       example: 999.99
- *                     quantity:
- *                       type: integer
- *                       example: 2
- *               shippingAddress:
- *                 type: object
- *                 properties:
- *                   street:
- *                     type: string
- *                     example: "123 MG Road"
- *                   city:
- *                     type: string
- *                     example: "Bangalore"
- *                   zipCode:
- *                     type: string
- *                     example: "560001"
- *                   country:
- *                     type: string
- *                     example: "India"
- *               paymentMethod:
- *                 type: string
- *                 example: "Credit Card"
+ *             $ref: '#/components/schemas/Order'
  *     responses:
  *       201:
  *         description: Order created successfully
@@ -77,7 +38,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', authMiddleware, orderController.createOrder);
+router.post('/orders/', authMiddleware, orderController.createOrder);
 
 /**
  * @swagger
@@ -108,7 +69,7 @@ router.post('/', authMiddleware, orderController.createOrder);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:orderId', authMiddleware, orderController.getOrderById);
+router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
 
 /**
  * @swagger
@@ -194,7 +155,7 @@ router.get('/users/:userId/orders', authMiddleware, orderController.getUserOrder
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch('/:orderId/status', authMiddleware, orderController.updateOrderStatus);
+router.patch('/orders/:orderId/status', authMiddleware, orderController.updateOrderStatus);
 
 /**
  * @swagger
@@ -225,6 +186,6 @@ router.patch('/:orderId/status', authMiddleware, orderController.updateOrderStat
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:orderId/cancel', authMiddleware, orderController.cancelOrder);
+router.post('/orders/:orderId/cancel', authMiddleware, orderController.cancelOrder);
 
 module.exports = router;

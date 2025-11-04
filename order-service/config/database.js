@@ -34,6 +34,7 @@ const createTables = async () => {
     CREATE TABLE IF NOT EXISTS orders (
       id VARCHAR(36) PRIMARY KEY,
       user_id VARCHAR(255) NOT NULL,
+      quote_id VARCHAR(255) NOT NULL,
       order_number VARCHAR(50) UNIQUE NOT NULL,
       status ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
       subtotal DECIMAL(10, 2) NOT NULL,

@@ -15,11 +15,11 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:8090/api/v1',
+        url: 'http://localhost:8090',
         description: 'Development Server (via API Gateway)',
       },
       {
-        url: 'http://localhost:3004/api/v1',
+        url: 'http://localhost:3004',
         description: 'Direct Order Service Access',
       },
     ],
@@ -35,8 +35,8 @@ const options = {
         OrderItem: {
           type: 'object',
           properties: {
-            productId: { type: 'string', example: 'P123' },
-            name: { type: 'string', example: 'Wireless Headphones' },
+            productId: { type: 'string', example: '690274f7493d3f63384c396e' },
+            name: { type: 'string', example: 'Smartphone X12' },
             price: { type: 'number', example: 2999.99 },
             quantity: { type: 'integer', example: 2 },
             sku: { type: 'string', example: 'LOG-HS100' },
@@ -46,7 +46,8 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'a3f2b5cd-1234-4bdf-8a12-ccf31b08fbb2' },
-            userId: { type: 'string', example: 'user123' },
+            userId: { type: 'string', example: '68ffd35931e5d76cc623e74c' },
+            quoteId: { type: 'string', example: '690280517b08806759dac771' },
             orderNumber: { type: 'string', example: 'ORD-ABC123' },
             status: { type: 'string', example: 'pending' },
             subtotal: { type: 'number', example: 5999.98 },
