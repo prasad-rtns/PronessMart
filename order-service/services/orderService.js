@@ -48,6 +48,7 @@ class OrderService {
       await orderQueries.insertOrderItems(orderId, orderData.items);
 
       // Publish order created event to Kafka
+      logger.info(`[Kafka] Attempting to publish order-created for ${orderId}`);
       await kafkaProducer.publishOrderEvent('order.created', {
         orderId,
         orderNumber,
@@ -55,7 +56,7 @@ class OrderService {
         total,
         items: orderData.items
       });
-
+      logger.info(`[Kafka] Successfully published order-created for ${orderId}`);
       logger.info(`Order created: ${orderNumber}`);
 
       return await this.getOrderById(orderId);

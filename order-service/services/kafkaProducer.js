@@ -24,9 +24,10 @@ const connectProducer = async () => {
 const publishOrderEvent = async (eventType, data) => {
   try {
     if (!isConnected) {
+      logger.info(`Kafka isDisConnected ${eventType}`);
       await connectProducer();
     }
-
+    logger.info(`Kafka message sent to topic ${eventType}`);
     await producer.send({
       topic: 'order-events',
       messages: [
