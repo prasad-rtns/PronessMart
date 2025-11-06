@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 class ProductService {
   async getAllProducts(filters = {}, page = 1, limit = 20, sort = '-createdAt') {
     try {
+      logger.info('SIGINT received, shutting down gracefully...');
       return await productQueries.findAll(filters, page, limit, sort);
     } catch (error) {
       logger.error(`Error getting products: ${error.message}`);

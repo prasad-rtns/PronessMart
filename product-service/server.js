@@ -11,9 +11,11 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
 const mongoose = require('mongoose');
+const eventHandlers = require('./services/eventHandlers');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+const serviceName = process.env.SERVICE_NAME || 'product-service';
 
 // Collect Prometheus metrics
 collectDefaultMetrics({ register });
@@ -59,12 +61,19 @@ app.get('/ready', async (req, res) => {
 
 // Metrics endpoint
 app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
 });
 
 // Routes
 app.use('/api/v1/products', productRoutes);
+// API Routes
+//app.use('/api/v2/products', productRoutes);
+//app.use('/api/v2/categories', categoryRoutes);
 
 // Error Handler
 app.use(errorHandler);
@@ -73,14 +82,59 @@ app.use(errorHandler);
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo-product:27017/productdb';
 
 // Connect to MongoDB and start server
-connectDB(MONGO_URL)
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      logger.info(`✅ Product Service running on port ${PORT}`);
-      logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/products/docs`);
+// connectDB(MONGO_URL)
+//   .then(() => {
+//     app.listen(PORT, '0.0.0.0', () => {
+//       logger.info(`✅ Product Service running on port ${PORT}`);
+//       logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/products/docs`);
+//     });
+//   })
+//   .catch((err) => {
+//     logger.error('❌ Failed to connect to MongoDB:', err);
+//     process.exit(1);
+//   });
+
+// Start server
+const startServer = async () => {
+  try {
+    logger.info(`startServer service running on port ${PORT}`);  
+    // Connect to MongoDB
+    await connectDB();
+    logger.info('Database connected successfully');
+
+    // Initialize Kafka event handlers
+    if (process.env.ENABLE_KAFKA === 'true') {
+      await eventHandlers.initialize();
+      logger.info('Kafka event handlers initialized');
+    } else {
+      logger.info('Kafka is disabled, skipping event handler initialization');
+    }
+
+    // Start server
+    app.listen(PORT, () => {
+      logger.info(`Product service running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
-  })
-  .catch((err) => {
-    logger.error('❌ Failed to connect to MongoDB:', err);
+  } catch (error) {
+    logger.info(`startServer service running on port ${PORT}`);  
+    logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
-  });
+  }
+};
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully...');
+  const { disconnect } = require('./config/kafka');
+  await disconnect();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully...');
+  const { disconnect } = require('./config/kafka');
+  await disconnect();
+  process.exit(0);
+});
+
+startServer();
