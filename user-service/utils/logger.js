@@ -17,7 +17,7 @@ const logger = winston.createLogger({
     winston.format.splat(),
     winston.format.json()
   ),
-  defaultMeta: { service: process.env.SERVICE_NAME || 'microservice' },
+  defaultMeta: { service: process.env.SERVICE_NAME || 'product-service' },
   transports: [
     new winston.transports.Console({
       format: consoleFormat // Use specific format for console
