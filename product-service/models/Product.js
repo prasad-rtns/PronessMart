@@ -82,6 +82,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['in_stock', 'out_of_stock', 'pre_order', 'discontinued'],
     default: 'in_stock'
+  },
+  productversion: {
+    type: String,
+    default: 'v1'
   }
 }, {
   timestamps: true
@@ -92,4 +96,7 @@ productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ category: 1, subcategory: 1 });
 productSchema.index({ price: 1 });
 
-module.exports = mongoose.model('Product', productSchema);
+// Important: both models point to the same collection name -> 'products'
+const Product = mongoose.model('Product', productSchema, 'products');
+
+module.exports = Product;

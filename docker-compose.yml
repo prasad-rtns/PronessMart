@@ -59,7 +59,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE=7d
+      - ENABLE_KAFKA="true"
       - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CLIENT_ID= product-service
+      - KAFKA_GROUP_ID=product-service-group
     depends_on:
       - mongo-product
       - redis

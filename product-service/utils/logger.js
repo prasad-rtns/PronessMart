@@ -1,6 +1,7 @@
 const winston = require('winston');
-
+const serviceName = process.env.SERVICE_NAME || 'product-service';
 const logLevel = process.env.LOG_LEVEL || 'info';
+const {infoCounter, errorCounter } = require('../utils/metrics');
 
 // --- Common Log Formats ---
 const consoleFormat = winston.format.combine(
@@ -73,6 +74,19 @@ if (process.env.NODE_ENV !== 'production') {
     )
   }));
 }
+
+// Hook counters into logger
+const originalInfo = logger.info;
+logger.info = function (...args) {
+  infoCounter.labels(serviceName).inc();
+  return originalInfo.apply(logger, args);
+};
+
+const originalError = logger.error;
+logger.error = function (...args) {
+  errorCounter.labels(serviceName).inc();
+  return originalError.apply(logger, args);
+};
 
 module.exports = logger;
 module.exports.createLogger = createLogger; // Export the factory function for custom loggers

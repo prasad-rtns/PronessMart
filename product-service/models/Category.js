@@ -1,97 +1,168 @@
-//File is missing: product-service\models\Category.js
-
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  username: {
+const categorySchema = new mongoose.Schema({
+  name: {
     type: String,
-    required: [true, 'Username is required'],
-    unique: true,
+    required: [true, 'Category name is required'],
     trim: true,
-    minlength: [3, 'Username must be at least 3 characters'],
-    maxlength: [30, 'Username cannot exceed 30 characters']
+    unique: true,
+    maxlength: [100, 'Category name cannot exceed 100 characters']
   },
-  email: {
+  slug: {
     type: String,
-    required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
-    trim: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
+    index: true
   },
-  password: {
+  description: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false
+    maxlength: [500, 'Description cannot exceed 500 characters']
   },
-  firstName: {
-    type: String,
-    trim: true
+  parent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null,
+    index: true
   },
-  lastName: {
-    type: String,
-    trim: true
+  level: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
   },
-  phone: {
-    type: String,
-    trim: true
+  image: {
+    url: String,
+    alt: String
   },
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    country: String,
-    zipCode: String
-  },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
-  },
-  preferences: {
-    newsletter: {
-      type: Boolean,
-      default: false
-    },
-    notifications: {
-      type: Boolean,
-      default: true
-    }
-  },
+  icon: String,
   isActive: {
     type: Boolean,
-    default: true
+    default: true,
+    index: true
   },
-  lastLogin: {
-    type: Date
+  order: {
+    type: Number,
+    default: 0
+  },
+  metaTitle: String,
+  metaDescription: String,
+  metaKeywords: [String],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    return next();
+// Index for performance
+categorySchema.index({ parent: 1, isActive: 1, order: 1 });
+
+// Pre-save middleware to generate slug and set level
+categorySchema.pre('save', async function(next) {
+  if (this.isModified('name')) {
+    this.slug = this.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
   
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  // Calculate level based on parent
+  if (this.isModified('parent')) {
+    if (this.parent) {
+      const parentCategory = await this.constructor.findById(this.parent);
+      this.level = parentCategory ? parentCategory.level + 1 : 0;
+    } else {
+      this.level = 0;
+    }
+  }
+  
   next();
 });
 
-// Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+// Virtual to get subcategories
+categorySchema.virtual('subcategories', {
+  ref: 'Category',
+  localField: '_id',
+  foreignField: 'parent'
+});
+
+// Method to get full category path
+categorySchema.methods.getPath = async function() {
+  const path = [this];
+  let current = this;
+  
+  while (current.parent) {
+    current = await this.constructor.findById(current.parent);
+    if (current) {
+      path.unshift(current);
+    } else {
+      break;
+    }
+  }
+  
+  return path;
 };
 
-// Remove sensitive data from JSON response
-userSchema.methods.toJSON = function() {
-  const userObject = this.toObject();
-  delete userObject.password;
-  return userObject;
+// Static method to get category tree
+categorySchema.statics.getTree = async function(parentId = null) {
+  const categories = await this.find({ 
+    parent: parentId,
+    isActive: true 
+  }).sort({ order: 1 });
+  
+  const tree = [];
+  for (const category of categories) {
+    const subcategories = await this.getTree(category._id);
+    tree.push({
+      ...category.toObject(),
+      subcategories
+    });
+  }
+  
+  return tree;
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Static method to get all descendants
+categorySchema.statics.getDescendants = async function(categoryId) {
+  const descendants = [];
+  const children = await this.find({ parent: categoryId });
+  
+  for (const child of children) {
+    descendants.push(child);
+    const childDescendants = await this.getDescendants(child._id);
+    descendants.push(...childDescendants);
+  }
+  
+  return descendants;
+};
+
+// Get all descendant category names by parent category name
+categorySchema.statics.getDescendantNamesByName = async function (categoryName) {
+  const category = await this.findOne({ slug: categoryName });
+  if (!category) return [];
+
+  const descendantNames = [];
+  const queue = [category._id];
+
+  while (queue.length > 0) {
+    const parentId = queue.shift();
+    const children = await this.find({ parent: parentId }, { slug: 1 });
+    for (const child of children) {
+      descendantNames.push(child.slug);
+      queue.push(child._id);
+    }
+  }
+
+  return descendantNames;
+};
+
+const Category = mongoose.model('Category', categorySchema);
+
+module.exports = Category;

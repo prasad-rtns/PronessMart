@@ -1,10 +1,36 @@
 const productQueries = require('../data/productQueries');
 const logger = require('../utils/logger');
+const cache = require('../utils/cache');
+const CACHE_TTL = 3600; // 1 hour
 
 class ProductService {
   async getAllProducts(filters = {}, page = 1, limit = 20, sort = '-createdAt') {
     try {
-      return await productQueries.findAll(filters, page, limit, sort);
+      const cacheKey = `products:${JSON.stringify(filters)}:page=${page}:limit=${limit}:sort=${sort}`;
+      logger.debug(`🧩 Checking Redis cache for key: ${cacheKey}`);
+
+      // ✅ Try cache first
+      let getAllProducts = await cache.getCache(cacheKey);
+      if (getAllProducts) {
+        logger.debug(`✅ Cache hit for key: ${cacheKey}`);
+        return getAllProducts;
+      }
+
+      // 🚀 If not in cache, fetch from DB
+      // 2️⃣ Fetch from DB
+      const dbResult = await productQueries.findAll(filters, page, limit, sort);
+      const products = dbResult?.products || [];
+      const pagination = dbResult?.pagination || {};
+
+      logger.debug(`DB returned ${products.length} products for filters ${JSON.stringify(filters)}`);
+
+      // 3️⃣ Cache complete object (including pagination)
+      if (dbResult && products.length >= 0) {
+        await cache.setCache(cacheKey, dbResult, CACHE_TTL);
+        logger.debug(`💾 Cached ${products.length} products for key: ${cacheKey}`);
+      }
+
+      return dbResult;
     } catch (error) {
       logger.error(`Error getting products: ${error.message}`);
       throw error;
