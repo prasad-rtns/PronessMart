@@ -35,7 +35,7 @@ const options = {
         CartItem: {
           type: 'object',
           properties: {
-            productId: { type: 'string', example: '664f9b86aab2a19b13df0f88' },
+            productId: { type: 'string', example: '690e595aa06064479fd559b4' },
             name: { type: 'string', example: 'Wireless Mouse' },
             price: { type: 'number', example: 999.99 },
             quantity: { type: 'integer', example: 2 },
