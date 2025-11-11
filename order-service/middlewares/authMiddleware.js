@@ -27,7 +27,7 @@ const authMiddleware = async (req, res, next) => {
 
       // Validate with User service to check user status
       try {
-        const response = await axios.get(`${USER_SERVICE_URL}/api/users/validate`, {
+        const response = await axios.get(`${USER_SERVICE_URL}/api/v1/auth/validate`, {
           headers: { 
             Authorization: `Bearer ${token}` 
           },
