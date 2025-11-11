@@ -2,17 +2,17 @@ const jwt = require('../utils/jwt');
 const logger = require('../utils/logger');
 const axios = require('axios');
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user-service:3001';
 
 const authMiddleware = async (req, res, next) => {
   try {
     // Get token from header
     let token;
-    
+    logger.debug(`💾 req.headers.authorization ${req?.headers?.authorization} startsWith Bearer`);
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
-
+    logger.debug(`💾 Token ${token} Bearer`);
     // Check if token exists
     if (!token) {
       return res.status(401).json({
@@ -24,16 +24,15 @@ const authMiddleware = async (req, res, next) => {
     try {
       // Verify token signature locally first (fast fail for invalid tokens)
       const decoded = jwt.verifyToken(token);
-
       // Validate with User service to check user status
       try {
-        const response = await axios.get(`${USER_SERVICE_URL}/api/users/validate`, {
+        const response = await axios.get(`${USER_SERVICE_URL}/api/v1/auth/validate`, {
           headers: { 
             Authorization: `Bearer ${token}` 
           },
           timeout: 5000 // 5 second timeout
         });
-
+        logger.info(`Using USER_SERVICE_URL - response = ${response}`);
         if (response.data.success) {
           req.user = response.data.user;
           next();
