@@ -57,7 +57,7 @@ class UserService {
       await userQueries.updateLastLogin(user._id);
 
       // Generate token
-      const token = await this.generateToken(user._id);
+      const token = await this.generateToken(user);
 
       // Remove password from response
       user.password = undefined;
@@ -127,8 +127,8 @@ class UserService {
     }
   }
 
-  async generateToken(userId) {
-    return jwt.generateToken({ id: userId });
+  async generateToken(user) {
+    return jwt.generateToken({ id: user._id, email: user.email, role: user.role });
   }
 
   async verifyToken(token) {

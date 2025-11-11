@@ -89,6 +89,7 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
       - KAFKA_BROKERS=kafka:9092
+      - PRODUCT_SERVICE_URL=http://product-service:3002   # ✅ important
     depends_on:
       - mongo-cart
       - redis
