@@ -441,3 +441,13 @@ If you have run out of energy or time for your project, put a note at the top of
 #Kafka Consumer output
 `docker exec -it 013da1b415bc bash`
 `/usr/bin/kafka-console-consumer --bootstrap-server localhost:9092 --topic order-events --from-beginning`
+
+
+# Create topics
+```
+kafka-topics --create --topic order-events --partitions 3 --replication-factor 2
+kafka-topics --create --topic inventory-events --partitions 3 --replication-factor 2
+kafka-topics --create --topic cart-events --partitions 3 --replication-factor 2
+kafka-topics --create --topic analytics-events --partitions 3 --replication-factor 2
+kafka-topics --create --topic notification-events --partitions 3 --replication-factor 2
+```

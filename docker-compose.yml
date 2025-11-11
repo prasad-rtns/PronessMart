@@ -34,11 +34,21 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=24h
-      - KAFKA_BROKERS=kafka:9092
+      - ENABLE_KAFKA=true
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - KAFKA_CLIENT_ID=user-service
+      - KAFKA_GROUP_ID=user-service-group
     depends_on:
-      - mongo-user
-      - redis
-      - kafka
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      mongo-user:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - ecommerce-network
     restart: unless-stopped
@@ -60,14 +70,21 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=7d
-      - ENABLE_KAFKA="true"
-      - KAFKA_BROKERS=kafka:9092
-      - KAFKA_CLIENT_ID= product-service
+      - ENABLE_KAFKA=true
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - KAFKA_CLIENT_ID=product-service
       - KAFKA_GROUP_ID=product-service-group
     depends_on:
-      - mongo-product
-      - redis
-      - kafka
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      mongo-product:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - ecommerce-network
     restart: unless-stopped
@@ -88,12 +105,22 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
-      - KAFKA_BROKERS=kafka:9092
-      - PRODUCT_SERVICE_URL=http://product-service:3002   # ✅ important
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - ENABLE_KAFKA=true
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - KAFKA_CLIENT_ID=cart-service
+      - KAFKA_GROUP_ID=cart-service-group
     depends_on:
-      - mongo-cart
-      - redis
-      - kafka
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      mongo-cart:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - ecommerce-network
     restart: unless-stopped
@@ -118,11 +145,21 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
-      - KAFKA_BROKERS=kafka:9092
+      - ENABLE_KAFKA=true
+      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - KAFKA_CLIENT_ID=order-service
+      - KAFKA_GROUP_ID=order-service-group
     depends_on:
-      - mysql
-      - redis
-      - kafka
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      mysql:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - ecommerce-network
     restart: unless-stopped
@@ -166,7 +203,7 @@ services:
       - ecommerce-network
     restart: unless-stopped
 
-  # Redis for Cart Service
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -197,48 +234,136 @@ services:
   # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper
+    container_name: ecommerce-zookeeper
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
     networks:
       - ecommerce-network
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Kafka
-  kafka:
+  # Kafka Broker 1
+  kafka-1:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka
+    container_name: ecommerce-kafka-1
+    restart: unless-stopped
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
-      - "9093:9093"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+    volumes:
+      - kafka_1_data:/var/lib/kafka/data
     networks:
       - ecommerce-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Kafka Broker 2
+  kafka-2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecommerce-kafka-2
     restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:29093,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+    volumes:
+      - kafka_2_data:/var/lib/kafka/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9093"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Kafka Broker 3
+  kafka-3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ecommerce-kafka-3
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:29094,PLAINTEXT_HOST://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+    volumes:
+      - kafka_3_data:/var/lib/kafka/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9094"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   # Kafka UI
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     depends_on:
-      - kafka
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:29092,kafka-2:29093,kafka-3:29094
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     networks:
       - ecommerce-network
@@ -285,10 +410,26 @@ networks:
     driver: bridge
 
 volumes:
+  # Mongo volumes
   mongo-user-data:
   mongo-product-data:
   mongo-cart-data:
+  
+  # Redis volume
   redis-data:
+  
+  # MySQL volume
   mysql-data:
+  
+  # Monitoring volumes
   prometheus-data:
   grafana-data:
+  
+  # Zookeeper volumes
+  zookeeper_data:
+  zookeeper_logs:
+  
+  # Kafka volumes
+  kafka_1_data:
+  kafka_2_data:
+  kafka_3_data:

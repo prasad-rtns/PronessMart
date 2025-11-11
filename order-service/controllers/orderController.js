@@ -3,12 +3,27 @@ const logger = require('../utils/logger');
 
 // Create order
 exports.createOrder = async (req, res, next) => {
+  let token;
+    
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  // Check if token exists
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized to access this route'
+    });
+  }
+  logger.info(`req.headers.authorization: ${token}`);
   try {
     const orderData = {
       ...req.body,
-      userId: req.user.id
+      userId: req.user.id,
+      token: token
     };
-
+    logger.info(`Order Details: ${JSON.stringify(orderData)}`);
     const order = await orderService.createOrder(orderData);
 
     logger.info(`Order created for user: ${req.user.id}`);

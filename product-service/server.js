@@ -15,6 +15,7 @@ const { register, collectDefaultMetrics } = require('prom-client');
 const mongoose = require('mongoose');
 const eventHandlers = require('./services/eventHandlers');
 const requestMetrics = require('./middlewares/requestMetrics');
+const productKafkaConsumer = require('./services/productKafkaConsumer');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -110,8 +111,8 @@ const startServer = async () => {
     logger.info('Initialize Kafka event handlers');
     logger.info(`Initialize Kafka event handlers ${process.env.ENABLE_KAFKA}`);
     if (process.env.ENABLE_KAFKA) {
-      await eventHandlers.initialize();
-      logger.info('Kafka event handlers initialized');
+      await productKafkaConsumer.startConsumer();
+      logger.info('Product Kafka consumer started');
     } else {
       logger.info('Kafka is disabled, skipping event handler initialization');
     }
@@ -130,16 +131,8 @@ const startServer = async () => {
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
-  const { disconnect } = require('./config/kafka');
-  await disconnect();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully...');
-  const { disconnect } = require('./config/kafka');
-  await disconnect();
+  logger.info(`[${serviceName}] SIGTERM received. Closing connections...`);
+  await productKafkaConsumer.stopConsumer();
   process.exit(0);
 });
 

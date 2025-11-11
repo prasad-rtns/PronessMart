@@ -200,9 +200,9 @@ router.get('/summary', cartController.getCartSummary);
  *             items:
  *               - productId: "690e595aa06064479fd559b4"
  *                 quantity: 2
- *               - productId: "664f9b86aab2a19b13df0f89"
+ *               - productId: "690e57e4a06064479fc95ba4"
  *                 quantity: 1
- *               - productId: "664f9b86aab2a19b13df0f90"
+ *               - productId: "690e57cea06064479fc86219"
  *                 quantity: 3
  *     responses:
  *       200:

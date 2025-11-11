@@ -73,7 +73,7 @@ router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
 
 /**
  * @swagger
- * /api/v1/users/{userId}/orders:
+ * /api/v1/orders/{userId}/orders:
  *   get:
  *     summary: Get all orders for a specific user
  *     tags: [Orders]
@@ -111,7 +111,7 @@ router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/users/:userId/orders', authMiddleware, orderController.getUserOrders);
+router.get('/orders/:userId/orders', authMiddleware, orderController.getUserOrders);
 
 /**
  * @swagger

@@ -4,22 +4,25 @@ const logger = require('../utils/logger');
 /**
  * Order Data Access Layer
  * All database queries related to Order model (MySQL)
+ * All SQL operations with transaction support
  */
 
 class OrderQueries {
   /**
-   * Create new order
+   * Create order with items in a single transaction
    */
-  async create(orderData) {
+  async createOrderWithItems(orderData, orderItems) {
     const pool = getPool();
     const connection = await pool.getConnection();
 
     try {
       await connection.beginTransaction();
+      logger.info(`Transaction started for creating order ${orderData.orderNumber}`);
 
+      // Insert order
       const insertOrderQuery = `
         INSERT INTO orders (
-          id, user_id,quote_id, order_number, status, subtotal, discount, 
+          id, user_id, quote_id, order_number, status, subtotal, discount, 
           shipping_cost, tax, total, payment_method, payment_status,
           shipping_address, billing_address, notes
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -28,7 +31,7 @@ class OrderQueries {
       await connection.query(insertOrderQuery, [
         orderData.id,
         orderData.userId,
-        orderData.quoteId,
+        orderData.cartId,
         orderData.orderNumber,
         orderData.status || 'pending',
         orderData.subtotal,
@@ -43,11 +46,35 @@ class OrderQueries {
         orderData.notes || null
       ]);
 
+      logger.info(`Order ${orderData.orderNumber} inserted into database`);
+
+      // Insert order items
+      const insertItemQuery = `
+        INSERT INTO order_items (order_id, product_id, product_name, sku, price, quantity, subtotal)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      for (const item of orderItems) {
+        await connection.query(insertItemQuery, [
+          orderData.id,
+          item.productId,
+          item.productName,
+          item.sku,
+          item.price,
+          item.quantity,
+          item.subtotal
+        ]);
+      }
+
+      logger.info(`${orderItems.length} order items inserted for order ${orderData.orderNumber}`);
+
       await connection.commit();
+      logger.info(`Transaction committed successfully for order ${orderData.orderNumber}`);
+
       return orderData.id;
     } catch (error) {
       await connection.rollback();
-      logger.error(`Error in create query: ${error.message}`);
+      logger.error(`Transaction rolled back for order creation: ${error.message}`);
       throw error;
     } finally {
       connection.release();
@@ -55,36 +82,151 @@ class OrderQueries {
   }
 
   /**
-   * Insert order items
+   * Update order status with transaction
    */
-  async insertOrderItems(orderId, items) {
+  async updateOrderStatus(orderId, newStatus, userId) {
     const pool = getPool();
     const connection = await pool.getConnection();
 
     try {
-      const insertItemQuery = `
-        INSERT INTO order_items (order_id, product_id, product_name, sku, price, quantity, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `;
+      await connection.beginTransaction();
+      logger.info(`Transaction started for updating order ${orderId} status to ${newStatus}`);
 
-      for (const item of items) {
-        await connection.query(insertItemQuery, [
-          orderId,
-          item.productId,
-          item.name,
-          item.sku,
-          item.price,
-          item.quantity,
-          item.price * item.quantity
-        ]);
+      // Get current order
+      const [orders] = await connection.query(
+        'SELECT * FROM orders WHERE id = ?',
+        [orderId]
+      );
+
+      if (orders.length === 0) {
+        throw new Error('Order not found');
       }
 
-      return true;
+      const order = orders[0];
+
+      // Check ownership
+      if (order.user_id !== userId) {
+        throw new Error('Unauthorized to update this order');
+      }
+
+      // Prevent status updates for completed or cancelled orders
+      if (['delivered', 'cancelled'].includes(order.status)) {
+        throw new Error(`Cannot update order with status: ${order.status}`);
+      }
+
+      // Update status
+      const [result] = await connection.query(
+        'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
+        [newStatus, orderId]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error('Failed to update order status');
+      }
+
+      logger.info(`Order ${orderId} status updated from ${order.status} to ${newStatus}`);
+
+      await connection.commit();
+      logger.info(`Transaction committed for order ${orderId} status update`);
+
+      // Return old status for event publishing
+      return {
+        success: true,
+        oldStatus: order.status,
+        order: order
+      };
     } catch (error) {
-      logger.error(`Error in insertOrderItems query: ${error.message}`);
+      await connection.rollback();
+      logger.error(`Transaction rolled back for order ${orderId}: ${error.message}`);
       throw error;
     } finally {
       connection.release();
+    }
+  }
+
+  /**
+   * Update payment status with transaction and optional status update
+   */
+  async updateOrderPaymentStatus(orderId, paymentStatus, userId) {
+    const pool = getPool();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+      logger.info(`Transaction started for updating payment status of order ${orderId}`);
+
+      // Get current order
+      const [orders] = await connection.query(
+        'SELECT * FROM orders WHERE id = ?',
+        [orderId]
+      );
+
+      if (orders.length === 0) {
+        throw new Error('Order not found');
+      }
+
+      const order = orders[0];
+
+      // Check ownership
+      if (order.user_id !== userId) {
+        throw new Error('Unauthorized to update this order');
+      }
+
+      // Update payment status
+      const [result] = await connection.query(
+        'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
+        [paymentStatus, orderId]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error('Failed to update payment status');
+      }
+
+      // If payment is successful and order is pending, update to confirmed
+      let statusUpdated = false;
+      if (paymentStatus === 'paid' && order.status === 'pending') {
+        await connection.query(
+          'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
+          ['confirmed', orderId]
+        );
+        statusUpdated = true;
+        logger.info(`Order ${orderId} status updated to confirmed after successful payment`);
+      }
+
+      await connection.commit();
+      logger.info(`Transaction committed for order ${orderId} payment status update`);
+
+      return {
+        success: true,
+        oldPaymentStatus: order.payment_status,
+        statusUpdated: statusUpdated,
+        order: order
+      };
+    } catch (error) {
+      await connection.rollback();
+      logger.error(`Transaction rolled back for order ${orderId} payment update: ${error.message}`);
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  /**
+   * Get order items by order ID
+   */
+  async getOrderItems(orderId) {
+    const pool = getPool();
+
+    try {
+      const [items] = await pool.query(
+        'SELECT * FROM order_items WHERE order_id = ?',
+        [orderId]
+      );
+
+      return items;
+    } catch (error) {
+      logger.error(`Error in getOrderItems query: ${error.message}`);
+      throw error;
     }
   }
 
@@ -113,19 +255,21 @@ class OrderQueries {
       );
 
       order.items = items;
+      
+      // Parse JSON fields
       try {
-          order.shippingAddress = typeof order.shipping_address === 'string'
-            ? JSON.parse(order.shipping_address)
-            : order.shipping_address;
+        order.shippingAddress = typeof order.shipping_address === 'string'
+          ? JSON.parse(order.shipping_address)
+          : order.shipping_address;
 
-          order.billingAddress = typeof order.billing_address === 'string'
-            ? JSON.parse(order.billing_address)
-            : order.billing_address;
-        } catch (err) {
-          logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
-          order.shippingAddress = order.shipping_address;
-          order.billingAddress = order.billing_address;
-        }
+        order.billingAddress = typeof order.billing_address === 'string'
+          ? JSON.parse(order.billing_address)
+          : order.billing_address;
+      } catch (err) {
+        logger.warn(`Failed to parse address JSON for order ${order.id}: ${err.message}`);
+        order.shippingAddress = order.shipping_address;
+        order.billingAddress = order.billing_address;
+      }
 
       return order;
     } catch (error) {
@@ -159,6 +303,8 @@ class OrderQueries {
       );
 
       order.items = items;
+      
+      // Parse JSON fields
       try {
         order.shippingAddress = typeof order.shipping_address === 'string'
           ? JSON.parse(order.shipping_address)
@@ -205,6 +351,8 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
+        
+        // Parse JSON fields
         try {
           order.shippingAddress = typeof order.shipping_address === 'string'
             ? JSON.parse(order.shipping_address)
@@ -236,75 +384,7 @@ class OrderQueries {
   }
 
   /**
-   * Update order status
-   */
-  async updateStatus(orderId, status) {
-    const pool = getPool();
-
-    try {
-      const [result] = await pool.query(
-        'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
-        [status, orderId]
-      );
-
-      return result.affectedRows > 0;
-    } catch (error) {
-      logger.error(`Error in updateStatus query: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Update payment status
-   */
-  async updatePaymentStatus(orderId, paymentStatus) {
-    const pool = getPool();
-
-    try {
-      const [result] = await pool.query(
-        'UPDATE orders SET payment_status = ?, updated_at = NOW() WHERE id = ?',
-        [paymentStatus, orderId]
-      );
-
-      return result.affectedRows > 0;
-    } catch (error) {
-      logger.error(`Error in updatePaymentStatus query: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Update order
-   */
-  async update(orderId, updateData) {
-    const pool = getPool();
-
-    try {
-      const fields = [];
-      const values = [];
-
-      Object.keys(updateData).forEach(key => {
-        if (key !== 'id') {
-          fields.push(`${key} = ?`);
-          values.push(updateData[key]);
-        }
-      });
-
-      fields.push('updated_at = NOW()');
-      values.push(orderId);
-
-      const query = `UPDATE orders SET ${fields.join(', ')} WHERE id = ?`;
-      const [result] = await pool.query(query, values);
-
-      return result.affectedRows > 0;
-    } catch (error) {
-      logger.error(`Error in update query: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete order
+   * Delete order (with transaction)
    */
   async deleteById(orderId) {
     const pool = getPool();
@@ -312,18 +392,26 @@ class OrderQueries {
 
     try {
       await connection.beginTransaction();
+      logger.info(`Transaction started for deleting order ${orderId}`);
 
       // Delete order items first (foreign key constraint)
       await connection.query('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+      logger.info(`Order items deleted for order ${orderId}`);
 
       // Delete order
-      await connection.query('DELETE FROM orders WHERE id = ?', [orderId]);
+      const [result] = await connection.query('DELETE FROM orders WHERE id = ?', [orderId]);
+      
+      if (result.affectedRows === 0) {
+        throw new Error('Order not found');
+      }
 
       await connection.commit();
+      logger.info(`Transaction committed for deleting order ${orderId}`);
+      
       return true;
     } catch (error) {
       await connection.rollback();
-      logger.error(`Error in deleteById query: ${error.message}`);
+      logger.error(`Transaction rolled back for order deletion: ${error.message}`);
       throw error;
     } finally {
       connection.release();
@@ -355,6 +443,8 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
+        
+        // Parse JSON fields
         try {
           order.shippingAddress = typeof order.shipping_address === 'string'
             ? JSON.parse(order.shipping_address)
@@ -410,6 +500,8 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
+        
+        // Parse JSON fields
         try {
           order.shippingAddress = typeof order.shipping_address === 'string'
             ? JSON.parse(order.shipping_address)
@@ -456,6 +548,35 @@ class OrderQueries {
     } catch (error) {
       logger.error(`Error in getPendingOrders query: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Bulk update order statuses (with transaction)
+   */
+  async bulkUpdateStatus(orderIds, status) {
+    const pool = getPool();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+      logger.info(`Transaction started for bulk updating ${orderIds.length} orders`);
+
+      const placeholders = orderIds.map(() => '?').join(',');
+      const query = `UPDATE orders SET status = ?, updated_at = NOW() WHERE id IN (${placeholders})`;
+      
+      const [result] = await connection.query(query, [status, ...orderIds]);
+
+      await connection.commit();
+      logger.info(`Transaction committed for bulk update of ${result.affectedRows} orders`);
+
+      return result.affectedRows;
+    } catch (error) {
+      await connection.rollback();
+      logger.error(`Transaction rolled back for bulk update: ${error.message}`);
+      throw error;
+    } finally {
+      connection.release();
     }
   }
 
@@ -642,6 +763,8 @@ class OrderQueries {
           [order.id]
         );
         order.items = items;
+        
+        // Parse JSON fields
         try {
           order.shippingAddress = typeof order.shipping_address === 'string'
             ? JSON.parse(order.shipping_address)

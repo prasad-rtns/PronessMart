@@ -10,6 +10,24 @@ const kafka = new Kafka({
   }
 });
 
+/**
+ * Creates a new Kafka consumer instance
+ * @param {string} groupId - The consumer group ID
+ */
+const createConsumer = (groupId) => {
+  if (!groupId) {
+    throw new Error('A consumer group ID is required.');
+  }
+  const consumer = kafka.consumer({
+    groupId: groupId || process.env.KAFKA_GROUP_ID || 'order-service-group',
+    sessionTimeout: 30000,
+    heartbeatInterval: 3000,
+    allowAutoTopicCreation: true
+  });
+
+  return consumer;
+};
+
 const producer = kafka.producer({
   allowAutoTopicCreation: true,
   transactionTimeout: 30000
@@ -139,6 +157,7 @@ module.exports = {
   consumer,
   connectProducer,
   connectConsumer,
+  createConsumer,
   disconnect,
   publishEvent,
   subscribe
