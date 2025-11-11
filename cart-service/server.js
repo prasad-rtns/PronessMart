@@ -11,6 +11,7 @@ const logger = require('./utils/logger');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
+const cartKafkaConsumer = require('./services/cartKafkaConsumer');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -69,17 +70,40 @@ app.use(errorHandler);
 
 // Start server
 // ✅ Correct MongoDB service name
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo-product:27017/productdb';
+const startServer = async () => {
+  try {
+    logger.info(`startServer service running on port ${PORT}`);  
+    // Connect to MongoDB
+    await connectDB();
+    logger.info('Database connected successfully');
 
-// Connect to MongoDB and start server
-connectDB(MONGO_URL)
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      logger.info(`✅ Product Service running on port ${PORT}`);
-      logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/cart/docs`);
+    // Initialize Kafka event handlers
+    logger.info('Initialize Kafka event handlers');
+    logger.info(`Initialize Kafka event handlers ${process.env.ENABLE_KAFKA}`);
+    if (process.env.ENABLE_KAFKA) {
+      await cartKafkaConsumer.startConsumer();
+      logger.info('Cart Kafka consumer started');
+    } else {
+      logger.info('Kafka is disabled, skipping event handler initialization');
+    }
+
+    // Start server
+    app.listen(PORT, () => {
+      logger.info(`Cart service running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
-  })
-  .catch((err) => {
-    logger.error('❌ Failed to connect to MongoDB:', err);
+  } catch (error) {
+    logger.info(`startServer service running on port ${PORT}`);  
+    logger.error(`Failed to start server: ${error.message}`);
     process.exit(1);
-  });
+  }
+};
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info(`[${serviceName}] SIGTERM received. Closing connections...`);
+  await cartKafkaConsumer.stopConsumer();
+  process.exit(0);
+});
+
+startServer();
