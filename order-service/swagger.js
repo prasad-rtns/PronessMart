@@ -7,7 +7,7 @@ const options = {
       title: 'Order Service API',
       version: '1.0.0',
       description:
-        'Handles all order processing for PRONESS-Mart, including order creation, tracking, and status management via Kafka + MySQL.',
+        'Handles all order processing for PRONESS-Mart, including order creation, tracking, status management, and health monitoring with circuit breaker support via Kafka + MySQL.',
       contact: {
         name: 'PRONESS-Mart API Team',
         email: 'support@pronessmart.com',
@@ -23,6 +23,16 @@ const options = {
         description: 'Direct Order Service Access',
       },
     ],
+    tags: [
+      {
+        name: 'Orders',
+        description: 'Manage user orders (creation, retrieval, updates, and cancellations)'
+      },
+      {
+        name: 'Health & Monitoring',
+        description: 'Service health checks, circuit breaker monitoring, and system diagnostics'
+      }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -32,6 +42,10 @@ const options = {
         },
       },
       schemas: {
+        // ============================================
+        // ORDER SCHEMAS
+        // ============================================
+        
         // 1. Reusable Address Schema
         Address: {
           type: 'object',
@@ -48,7 +62,7 @@ const options = {
         CreateOrderItemDTO: {
           type: 'object',
           properties: {
-            productId: { type: 'string', example: '690e57e4a06064479fc95ba4' },
+            productId: { type: 'string', example: '6914e60e786955184bf4681b' },
             name: { type: 'string', example: 'Smartphone Advanced' },
             price: { type: 'number', example: 655.75 },
             quantity: { type: 'integer', example: 1 },
@@ -75,18 +89,28 @@ const options = {
               items: { $ref: '#/components/schemas/CreateOrderItemDTO' },
               example: [
                 {
-                  "productId": "690e57e4a06064479fc95ba4",
-                  "name": "Smartphone Advanced",
-                  "price": 655.75,
-                  "quantity": 2,
-                  "sku": "ELE-336382-9842"
+                  "id": "b1f2b5cd-1234-4bdf-8a12-ccf31b08faa4",
+                  "productId": "6914e60e786955184bf4681b",
+                  "name": "Professional Laptop Max",
+                  "price": 1195.75,
+                  "quantity": 1,
+                  "sku": "ELE-000002-3217"
                 },
                 {
-                  "productId": "770e57e4a06064479fc95cb5",
-                  "name": "Wireless Earbuds",
-                  "price": 199.99,
-                  "quantity": 1,
-                  "sku": "AUD-987654-321"
+                  "id": "b1f2b235cd-1234-4bdf-8a12-ccf31b08fbb4",
+                  "productId": "6914e60e786955184bf4681d",
+                  "name": "Smartphone Premium",
+                  "price": 1859.84,
+                  "quantity": 2,
+                  "sku": "ELE-000004-6529"
+                },
+                {
+                  "id": "b1f2b235cd-1234-4bdf-8a12-ccf31b08fcc4",
+                  "productId": "6914e60e786955184bf4681a",
+                  "name": "Keyboard Pro",
+                  "price": 1134.68,
+                  "quantity": 3,
+                  "sku": "ELE-000001-8803"
                 }
               ]
             }
@@ -99,7 +123,7 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'string', example: 'b1f2b5cd-1234-4bdf-8a12-ccf31b08fcc4' },
-            productId: { type: 'string', example: '690e57e4a06064479fc95ba4' },
+            productId: { type: 'string', example: '6914e60e786955184bf4681b' },
             name: { type: 'string', example: 'Smartphone Advanced' },
             price: { type: 'number', example: 655.75 },
             quantity: { type: 'integer', example: 2 },
@@ -132,8 +156,6 @@ const options = {
               items: { $ref: '#/components/schemas/OrderItem' },
             },
           },
-          // --- THIS IS THE UPDATE ---
-          // Added the full example you provided
           example: {
             "id": "a3f2b5cd-1234-4bdf-8a12-ccf31b08fbb2",
             "userId": "68ffd35931e5d76cc623e74c",
@@ -159,26 +181,34 @@ const options = {
             },
             "items": [
               {
-                "id": "b1f2b5cd-1234-4bdf-8a12-ccf31b08fcc4",
-                "productId": "690e57e4a06064479fc95ba4",
-                "name": "Smartphone Advanced",
-                "price": 655.75,
+                "id": "b1f2b5cd-1234-4bdf-8a12-ccf31b08faa4",
+                "productId": "6914e60e786955184bf4681b",
+                "name": "Professional Laptop Max",
+                "price": 1195.75,
+                "quantity": 1,
+                "sku": "ELE-000002-3217"
+              },
+              {
+                "id": "b1f2b235cd-1234-4bdf-8a12-ccf31b08fbb4",
+                "productId": "6914e60e786955184bf4681d",
+                "name": "Smartphone Premium",
+                "price": 1859.84,
                 "quantity": 2,
-                "sku": "ELE-336382-9842"
+                "sku": "ELE-000004-6529"
               },
               {
                 "id": "b1f2b235cd-1234-4bdf-8a12-ccf31b08fcc4",
-                "productId": "690e57e4a06064479fc95b21a4",
-                "name": "Smartphone 14",
-                "price": 655.75,
-                "quantity": 2,
-                "sku": "ELE-336382-9843"
+                "productId": "6914e60e786955184bf4681a",
+                "name": "Keyboard Pro",
+                "price": 1134.68,
+                "quantity": 3,
+                "sku": "ELE-000001-8803"
               }
             ]
           }
         },
         
-        // 6. Response Schemas (unchanged)
+        // 6. Order Response Schema
         OrderResponse: {
           type: 'object',
           properties: {
@@ -187,17 +217,190 @@ const options = {
             data: { $ref: '#/components/schemas/Order' },
           },
         },
+
+        // ============================================
+        // HEALTH & MONITORING SCHEMAS
+        // ============================================
+
+        // 7. Circuit Breaker State Schema
+        CircuitBreakerState: {
+          type: 'object',
+          properties: {
+            serviceName: { type: 'string', example: 'user-service' },
+            state: { 
+              type: 'string', 
+              enum: ['CLOSED', 'OPEN', 'HALF_OPEN'],
+              example: 'CLOSED',
+              description: 'CLOSED: Normal operation, OPEN: Circuit open (rejecting requests), HALF_OPEN: Testing recovery'
+            },
+            failureCount: { type: 'integer', example: 0 },
+            successCount: { type: 'integer', example: 0 },
+            nextAttemptIn: { 
+              type: 'integer', 
+              example: 0,
+              description: 'Time in milliseconds until next retry attempt (only when OPEN)'
+            }
+          }
+        },
+
+        // 8. Basic Health Response
+        HealthResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            status: { 
+              type: 'string', 
+              enum: ['healthy', 'degraded', 'unhealthy'],
+              example: 'healthy' 
+            },
+            service: { type: 'string', example: 'order-service' },
+            timestamp: { type: 'string', format: 'date-time', example: '2025-01-15T10:30:00.000Z' },
+            uptime: { type: 'number', example: 3600.5, description: 'Service uptime in seconds' },
+            memory: {
+              type: 'object',
+              properties: {
+                rss: { type: 'integer', example: 52428800 },
+                heapTotal: { type: 'integer', example: 18874368 },
+                heapUsed: { type: 'integer', example: 12345678 },
+                external: { type: 'integer', example: 1234567 }
+              }
+            },
+            version: { type: 'string', example: '1.0.0' }
+          }
+        },
+
+        // 9. Detailed Health Response
+        DetailedHealthResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            status: { 
+              type: 'string', 
+              enum: ['healthy', 'degraded', 'unhealthy'],
+              example: 'healthy' 
+            },
+            service: { type: 'string', example: 'order-service' },
+            timestamp: { type: 'string', format: 'date-time', example: '2025-01-15T10:30:00.000Z' },
+            uptime: { type: 'number', example: 3600.5 },
+            memory: {
+              type: 'object',
+              properties: {
+                rss: { type: 'integer' },
+                heapTotal: { type: 'integer' },
+                heapUsed: { type: 'integer' },
+                external: { type: 'integer' }
+              }
+            },
+            circuitBreakers: {
+              type: 'object',
+              additionalProperties: {
+                $ref: '#/components/schemas/CircuitBreakerState'
+              },
+              example: {
+                "user-service": {
+                  "serviceName": "user-service",
+                  "state": "CLOSED",
+                  "failureCount": 0,
+                  "successCount": 0,
+                  "nextAttemptIn": 0
+                },
+                "product-service": {
+                  "serviceName": "product-service",
+                  "state": "OPEN",
+                  "failureCount": 5,
+                  "successCount": 0,
+                  "nextAttemptIn": 45000
+                },
+                "cart-service": {
+                  "serviceName": "cart-service",
+                  "state": "HALF_OPEN",
+                  "failureCount": 0,
+                  "successCount": 1,
+                  "nextAttemptIn": 0
+                }
+              }
+            },
+            authCache: {
+              type: 'object',
+              properties: {
+                total: { type: 'integer', example: 150 },
+                active: { type: 'integer', example: 142 },
+                expired: { type: 'integer', example: 8 },
+                cacheEnabled: { type: 'boolean', example: true },
+                cacheTTL: { type: 'integer', example: 300, description: 'Cache TTL in seconds' }
+              }
+            },
+            environment: {
+              type: 'object',
+              properties: {
+                nodeEnv: { type: 'string', example: 'production' },
+                port: { type: 'string', example: '3004' }
+              }
+            }
+          }
+        },
+
+        // 10. Circuit Breakers Response
+        CircuitBreakersResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              additionalProperties: {
+                $ref: '#/components/schemas/CircuitBreakerState'
+              }
+            },
+            timestamp: { type: 'string', format: 'date-time' }
+          }
+        },
+
+        // 11. Auth Cache Stats Response
+        AuthCacheStatsResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              properties: {
+                total: { type: 'integer', example: 150 },
+                active: { type: 'integer', example: 142 },
+                expired: { type: 'integer', example: 8 },
+                cacheEnabled: { type: 'boolean', example: true },
+                cacheTTL: { type: 'integer', example: 300 }
+              }
+            },
+            timestamp: { type: 'string', format: 'date-time' }
+          }
+        },
+
+        // 12. Generic Success Response
+        SuccessResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Operation completed successfully' },
+            timestamp: { type: 'string', format: 'date-time' }
+          }
+        },
+
+        // 13. Error Response
         ErrorResponse: {
           type: 'object',
           properties: {
             success: { type: 'boolean', example: false },
-            message: { type: 'string', example: 'Order not found' },
+            message: { type: 'string', example: 'Operation failed' },
+            error: { type: 'string', example: 'error_code' }
           },
         },
       },
     },
   },
-  apis: [__dirname + '/routes/*.js'],
+  apis: [
+    __dirname + '/routes/*.js',
+    __dirname + '/routes/orderRoutes.js',
+    __dirname + '/routes/healthRoutes.js',
+  ],
 };
 
 module.exports = swaggerJsdoc(options);

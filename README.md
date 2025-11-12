@@ -221,6 +221,11 @@ Content-Type: application/json
 - Cart Service: http://localhost/api/v1/cart/docs
 - Order Service: http://localhost/api/v1/orders/docs
 
+### Download OpenAPI Spec
+```
+curl http://localhost:3004/api-docs.json > openapi.json
+```
+
 ### Monitoring Dashboards
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Prometheus**: http://localhost:9090
@@ -370,6 +375,7 @@ docker-compose down -v
 # Rebuild from scratch
 docker-compose up -d --build
 ```
+
 
 ## 📝 Environment Variables
 

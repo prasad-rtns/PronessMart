@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -38,7 +38,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/orders/', authMiddleware, orderController.createOrder);
+router.post('/', authMiddleware, orderController.createOrder);
 
 /**
  * @swagger
@@ -69,7 +69,7 @@ router.post('/orders/', authMiddleware, orderController.createOrder);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
+router.get('/:orderId', authMiddleware, orderController.getOrderById);
 
 /**
  * @swagger
@@ -111,7 +111,7 @@ router.get('/orders/:orderId', authMiddleware, orderController.getOrderById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/orders/:userId/orders', authMiddleware, orderController.getUserOrders);
+router.get('/:userId/orders', authMiddleware, orderController.getUserOrders);
 
 /**
  * @swagger
@@ -155,7 +155,7 @@ router.get('/orders/:userId/orders', authMiddleware, orderController.getUserOrde
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch('/orders/:orderId/status', authMiddleware, orderController.updateOrderStatus);
+router.patch('/:orderId/status', authMiddleware, orderController.updateOrderStatus);
 
 /**
  * @swagger
@@ -186,6 +186,6 @@ router.patch('/orders/:orderId/status', authMiddleware, orderController.updateOr
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/orders/:orderId/cancel', authMiddleware, orderController.cancelOrder);
+router.post('/:orderId/cancel', authMiddleware, orderController.cancelOrder);
 
 module.exports = router;
