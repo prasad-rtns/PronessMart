@@ -93,7 +93,7 @@ router.get('/all', authorizeAdmin, cartController.getAllCarts);
  *             example:
  *               success: true
  *               data:
- *                 _id: "690e595aa06064479fd559b4"
+ *                 _id: "6914e60e786955184bf4681d"
  *                 user: "664f9b86aab2a19b13df0f89"
  *                 items:
  *                   - product: "664f9b86aab2a19b13df0f90"
@@ -191,18 +191,18 @@ router.get('/summary', cartController.getCartSummary);
  *                   properties:
  *                     productId:
  *                       type: string
- *                       example: "690e595aa06064479fd559b4"
+ *                       example: "6914e60e786955184bf4681d"
  *                     quantity:
  *                       type: integer
  *                       minimum: 1
  *                       example: 2
  *           example:
  *             items:
- *               - productId: "690e595aa06064479fd559b4"
+ *               - productId: "6914e60e786955184bf4681d"
  *                 quantity: 2
- *               - productId: "690e57e4a06064479fc95ba4"
+ *               - productId: "6914e60e786955184bf4681b"
  *                 quantity: 1
- *               - productId: "690e57cea06064479fc86219"
+ *               - productId: "6914e60e786955184bf4681a"
  *                 quantity: 3
  *     responses:
  *       200:
@@ -253,7 +253,7 @@ router.post('/items', cartController.addMultipleItems);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 690e595aa06064479fd559b4
+ *         example: 6914e60e786955184bf4681d
  *     requestBody:
  *       required: true
  *       content:
@@ -306,7 +306,7 @@ router.put('/item/:productId', cartController.updateItemQuantity);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 690e595aa06064479fd559b4
+ *         example: 6914e60e786955184bf4681d
  *     responses:
  *       200:
  *         description: Item removed successfully
@@ -350,7 +350,7 @@ router.delete('/item/:productId', cartController.removeItem);
  *                 minItems: 1
  *                 items:
  *                   type: string
- *                 example: ["690e595aa06064479fd559b4", "664f9b86aab2a19b13df0f89"]
+ *                 example: ["6914e60e786955184bf4681d", "664f9b86aab2a19b13df0f89"]
  *     responses:
  *       200:
  *         description: Items removed successfully
@@ -516,7 +516,7 @@ router.delete('/coupon/:code', cartController.removeCoupon);
  *                           reason:
  *                             type: string
  *                       example:
- *                         - productId: "690e595aa06064479fd559b4"
+ *                         - productId: "6914e60e786955184bf4681d"
  *                           productName: "Wireless Mouse"
  *                           reason: "Insufficient stock. Available: 5, Requested: 10"
  */
@@ -610,7 +610,7 @@ router.post('/merge', cartController.mergeCarts);
  *               productId:
  *                 type: string
  *                 description: Product ID
- *                 example: "690e595aa06064479fd559b4"
+ *                 example: "6914e60e786955184bf4681d"
  *               quantity:
  *                 type: integer
  *                 minimum: 1

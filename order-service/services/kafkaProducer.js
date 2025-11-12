@@ -1,4 +1,4 @@
-const { Kafka } = require('kafkajs');
+const { Kafka, Partitioners } = require('kafkajs');
 const logger = require('../utils/logger');
 
 const kafka = new Kafka({
@@ -11,6 +11,7 @@ const kafka = new Kafka({
 });
 
 const producer = kafka.producer({
+  createPartitioner: Partitioners.LegacyPartitioner,
   allowAutoTopicCreation: true,
   transactionTimeout: 30000
 });

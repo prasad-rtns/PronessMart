@@ -11,6 +11,7 @@ const logger = require('./utils/logger');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
+const healthRoutes = require('./routes/healthRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3004;
@@ -50,14 +51,20 @@ app.use('/api/v1/orders/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
 }));
 
-// Health endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'UP',
-    service: SERVICE_NAME,
-    timestamp: new Date().toISOString(),
-  });
+// Swagger JSON endpoint
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
 });
+
+// Health endpoint
+// app.get('/health', (req, res) => {
+//   res.status(200).json({
+//     status: 'UP',
+//     service: SERVICE_NAME,
+//     timestamp: new Date().toISOString(),
+//   });
+// });
 
 // Prometheus metrics
 app.get('/metrics', async (req, res) => {
@@ -68,8 +75,9 @@ app.get('/metrics', async (req, res) => {
 // Core routes
 //app.use('/api/v1/orders', orderRoutes);
 //app.use('/api/v1/users/:userId/orders', orderRoutes);
-app.use('/api/v1', orderRoutes);
-
+app.use('/api/v1/orders', orderRoutes);
+// Register health routes (before other routes)
+app.use('/api/v1/orders/health', healthRoutes);
 // Error handler
 app.use(errorHandler);
 

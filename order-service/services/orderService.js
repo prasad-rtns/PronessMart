@@ -2,11 +2,16 @@ const orderQueries = require('../data/orderQueries');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const kafkaProducer = require('./kafkaProducer');
-const axios = require('axios');
+const { serviceClient } = require('../helpers/serviceClient');
 
-// Service URLs from environment
-const CART_SERVICE_URL = process.env.CART_SERVICE_URL || 'http://localhost:3003';
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
+// Service URLs and names from environment
+const CART_SERVICE_URL = process.env.CART_SERVICE_URL || 'http://cart-service:3003';
+const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://product-service:3002';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user-service:3001';
+
+const CART_SERVICE_NAME = 'cart-service';
+const PRODUCT_SERVICE_NAME = 'product-service';
+const USER_SERVICE_NAME = 'user-service';
 
 class OrderService {
   generateOrderNumber() {
@@ -19,18 +24,20 @@ class OrderService {
    * Create order with cart and inventory integration
    */
   async createOrder(orderData) {
-    try {
-      const orderId = uuidv4();
-      const orderNumber = this.generateOrderNumber();
+    const orderId = uuidv4();
+    const orderNumber = this.generateOrderNumber();
 
-      // Step 1: Validate cart and get items (external call)
+    try {
+      logger.info(`Creating order ${orderNumber} for user ${orderData.userId}`);
+
+      // Step 1: Validate cart and get items (with circuit breaker)
       const cartItems = await this.validateAndGetCart(orderData.userId, orderData.cartId, orderData.token);
       
       if (!cartItems || cartItems.length === 0) {
         throw new Error('Cart is empty or not found');
       }
 
-      // Step 2: Check product availability and stock (external call)
+      // Step 2: Check product availability and stock (with circuit breaker)
       await this.validateProductAvailability(cartItems);
 
       // Step 3: Calculate totals
@@ -69,22 +76,31 @@ class OrderService {
         subtotal: item.priceAtAdd * item.quantity
       }));
 
-      // Step 6: Create order with items in transaction (all SQL in OrderQueries)
+      // Step 6: Create order with items in transaction
       await orderQueries.createOrderWithItems(order, orderItems);
 
-      logger.info(`Order created successfully: ${orderNumber}`);
+      logger.info(`Order created successfully: ${orderNumber} (${orderId})`);
 
-      // Step 7: Publish Kafka events (async, after transaction commit)
+      // Step 7: Publish Kafka events (async, non-blocking)
       this.publishOrderEvents(orderId, orderNumber, orderData.userId, total, orderItems, cartItems)
         .catch(error => {
-          logger.error(`Error publishing Kafka events: ${error.message}`);
-          // Don't fail the order creation, just log the error
+          logger.error(`Error publishing Kafka events for order ${orderId}: ${error.message}`);
         });
 
       // Return created order
       return await this.getOrderById(orderId);
     } catch (error) {
-      logger.error(`Error creating order: ${error.message}`);
+      logger.error(`Error creating order ${orderNumber}: ${error.message}`, { 
+        orderId,
+        userId: orderData.userId,
+        error: error.stack 
+      });
+      
+      // Enhance error with circuit breaker info if available
+      if (error.circuitBreakerState) {
+        error.message = `${error.message} (Circuit: ${error.circuitBreakerState.state})`;
+      }
+      
       throw error;
     }
   }
@@ -94,8 +110,9 @@ class OrderService {
    */
   async publishOrderEvents(orderId, orderNumber, userId, total, orderItems, cartItems) {
     try {
+      logger.info(`[Kafka] Publishing events for order ${orderId}`);
+
       // Event 1: Order Created
-      logger.info(`[Kafka] Publishing order.created for ${orderId}`);
       await kafkaProducer.publishOrderEvent('order.created', {
         orderId,
         orderNumber,
@@ -105,8 +122,7 @@ class OrderService {
         timestamp: new Date().toISOString()
       });
 
-      // Event 2: Inventory Update (for product service)
-      logger.info(`[Kafka] Publishing inventory.update for ${orderId}`);
+      // Event 2: Inventory Update
       await kafkaProducer.publishOrderEvent('inventory.update', {
         orderId,
         orderNumber,
@@ -121,8 +137,7 @@ class OrderService {
         timestamp: new Date().toISOString()
       });
 
-      // Event 3: Cart Clear (for cart service)
-      logger.info(`[Kafka] Publishing cart.clear for user ${userId}`);
+      // Event 3: Cart Clear
       await kafkaProducer.publishOrderEvent('cart.clear', {
         orderId,
         orderNumber,
@@ -131,7 +146,7 @@ class OrderService {
         timestamp: new Date().toISOString()
       });
 
-      // Event 4: Order Analytics (for analytics service)
+      // Event 4: Order Analytics
       await kafkaProducer.publishOrderEvent('order.analytics', {
         orderId,
         orderNumber,
@@ -144,25 +159,28 @@ class OrderService {
 
       logger.info(`[Kafka] All events published successfully for order ${orderId}`);
     } catch (error) {
-      logger.error(`[Kafka] Error publishing events: ${error.message}`);
+      logger.error(`[Kafka] Error publishing events for order ${orderId}: ${error.message}`);
       throw error;
     }
   }
 
   /**
-   * Validate cart and get items
+   * Validate cart and get items using serviceClient
    */
   async validateAndGetCart(userId, cartId, token) {
     try {
       logger.info(`Validating cart for user: ${userId}`);
 
-      // Get cart from cart service
-      const response = await axios.get(`${CART_SERVICE_URL}/api/v1/cart`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        timeout: 5000
-      });
+      // Use serviceClient with circuit breaker
+      const response = await serviceClient.get(
+        CART_SERVICE_NAME,
+        `${CART_SERVICE_URL}/api/v1/cart`,
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}` 
+          }
+        }
+      );
 
       if (!response.data || !response.data.success) {
         throw new Error('Failed to fetch cart');
@@ -174,7 +192,6 @@ class OrderService {
         throw new Error('Cart is empty');
       }
 
-      // Check cart status
       if (cart.status !== 'active') {
         throw new Error(`Cart status is ${cart.status}, expected active`);
       }
@@ -182,17 +199,23 @@ class OrderService {
       logger.info(`Cart validated successfully with ${cart.items.length} items`);
       return cart.items;
     } catch (error) {
+      if (error.code === 'CIRCUIT_OPEN') {
+        logger.error(`Cart service circuit breaker is OPEN: ${error.message}`);
+        throw new Error('Cart service is temporarily unavailable. Please try again later.');
+      }
+
       if (error.response) {
-        logger.error(`Cart service error: ${error.response.status} - ${error.response.data?.message}`);
+        logger.error(`Cart service error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
         throw new Error(`Cart validation failed: ${error.response.data?.message || 'Unknown error'}`);
       }
+
       logger.error(`Error validating cart: ${error.message}`);
       throw error;
     }
   }
 
   /**
-   * Validate product availability and stock
+   * Validate product availability using serviceClient
    */
   async validateProductAvailability(cartItems) {
     try {
@@ -200,9 +223,10 @@ class OrderService {
 
       const validationPromises = cartItems.map(async (item) => {
         try {
-          const response = await axios.get(
-            `${PRODUCT_SERVICE_URL}/api/v1/products/${item.product}`,
-            { timeout: 5000 }
+          // Use serviceClient with circuit breaker
+          const response = await serviceClient.get(
+            PRODUCT_SERVICE_NAME,
+            `${PRODUCT_SERVICE_URL}/api/v1/products/${item.product}`
           );
 
           if (!response.data || !response.data.success) {
@@ -235,14 +259,24 @@ class OrderService {
 
           return {
             productId: item.product,
-            valid: true
+            valid: true,
+            product: product
           };
         } catch (error) {
+          if (error.code === 'CIRCUIT_OPEN') {
+            logger.error(`Product service circuit breaker is OPEN for product ${item.product}`);
+            return {
+              productId: item.product,
+              valid: false,
+              error: 'Product service temporarily unavailable'
+            };
+          }
+
           logger.error(`Error validating product ${item.product}: ${error.message}`);
           return {
             productId: item.product,
             valid: false,
-            error: 'Failed to validate product'
+            error: `Failed to validate product: ${error.message}`
           };
         }
       });
@@ -258,6 +292,7 @@ class OrderService {
       }
 
       logger.info('All products validated successfully');
+      return validations;
     } catch (error) {
       logger.error(`Product validation error: ${error.message}`);
       throw error;
@@ -269,7 +304,8 @@ class OrderService {
    */
   async updateOrderStatus(orderId, status, userId) {
     try {
-      // Update status in database (transaction handled in OrderQueries)
+      logger.info(`Updating order ${orderId} status to ${status}`);
+
       const result = await orderQueries.updateOrderStatus(orderId, status, userId);
 
       if (!result.success) {
@@ -288,7 +324,7 @@ class OrderService {
         timestamp: new Date().toISOString()
       });
 
-      // If order is cancelled, restore inventory
+      // Handle cancellation
       if (status === 'cancelled') {
         await this.handleOrderCancellation(orderId, order);
       }
@@ -309,7 +345,6 @@ class OrderService {
     try {
       logger.info(`Handling cancellation for order ${orderId}`);
 
-      // Get order items (SQL in OrderQueries)
       const orderItems = await orderQueries.getOrderItems(orderId);
 
       if (!orderItems || orderItems.length === 0) {
@@ -346,7 +381,6 @@ class OrderService {
       logger.info(`Inventory restoration event published for order ${orderId}`);
     } catch (error) {
       logger.error(`Error handling order cancellation: ${error.message}`);
-      // Don't throw - cancellation should still succeed even if Kafka fails
     }
   }
 
@@ -355,7 +389,8 @@ class OrderService {
    */
   async updatePaymentStatus(orderId, paymentStatus, userId) {
     try {
-      // Update payment status in database (transaction handled in OrderQueries)
+      logger.info(`Updating payment status for order ${orderId} to ${paymentStatus}`);
+
       const result = await orderQueries.updateOrderPaymentStatus(orderId, paymentStatus, userId);
 
       if (!result.success) {
@@ -383,16 +418,10 @@ class OrderService {
     }
   }
 
-  /**
-   * Cancel order
-   */
   async cancelOrder(orderId, userId) {
     return await this.updateOrderStatus(orderId, 'cancelled', userId);
   }
 
-  /**
-   * Get order by ID
-   */
   async getOrderById(orderId) {
     try {
       return await orderQueries.findById(orderId);
@@ -402,9 +431,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Get user orders
-   */
   async getUserOrders(userId, page = 1, limit = 10) {
     try {
       return await orderQueries.findByUserId(userId, page, limit);
@@ -414,9 +440,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Get order by order number
-   */
   async getOrderByNumber(orderNumber) {
     try {
       return await orderQueries.findByOrderNumber(orderNumber);
@@ -426,9 +449,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Get orders by status
-   */
   async getOrdersByStatus(status, page = 1, limit = 10) {
     try {
       return await orderQueries.findByStatus(status, page, limit);
@@ -438,9 +458,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Search orders
-   */
   async searchOrders(searchTerm, page = 1, limit = 10) {
     try {
       return await orderQueries.searchOrders(searchTerm, page, limit);
@@ -450,9 +467,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Get order statistics
-   */
   async getOrderStats() {
     try {
       return await orderQueries.getOrderStats();
@@ -462,9 +476,6 @@ class OrderService {
     }
   }
 
-  /**
-   * Delete order
-   */
   async deleteOrder(orderId) {
     try {
       return await orderQueries.deleteById(orderId);
@@ -475,13 +486,37 @@ class OrderService {
   }
 
   /**
-   * Generate service-to-service JWT token (mock implementation)
-   * In production, use proper service authentication
+   * Health check for service dependencies
    */
-  generateServiceToken(userId) {
-    // TODO: Implement proper service-to-service authentication
-    // For now, return a placeholder
-    return process.env.SERVICE_AUTH_TOKEN || 'service-token';
+  async healthCheck() {
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      services: {},
+      circuitBreakers: serviceClient.getCircuitBreakerStates()
+    };
+
+    // Check each service
+    const checks = [
+      serviceClient.healthCheck(PRODUCT_SERVICE_NAME, `${PRODUCT_SERVICE_URL}/health`),
+      serviceClient.healthCheck(CART_SERVICE_NAME, `${CART_SERVICE_URL}/health`),
+      serviceClient.healthCheck(USER_SERVICE_NAME, `${USER_SERVICE_URL}/health`)
+    ];
+
+    const results = await Promise.allSettled(checks);
+    
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const serviceName = [PRODUCT_SERVICE_NAME, CART_SERVICE_NAME, USER_SERVICE_NAME][index];
+        health.services[serviceName] = result.value;
+        
+        if (result.value.status !== 'healthy') {
+          health.status = 'degraded';
+        }
+      }
+    });
+
+    return health;
   }
 }
 
