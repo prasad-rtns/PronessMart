@@ -45,8 +45,8 @@ services:
   user-service:
     build: ./user-service
     # NO container_name for scaling
-    expose:
-      - "3001"
+    ports:
+      - "3001-3003:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -96,8 +96,8 @@ services:
   product-service:
     build: ./product-service
     # NO container_name for scaling
-    expose:
-      - "3002"
+    ports:
+      - "3002-3004:3002"
     environment:
       - NODE_ENV=production
       - PORT=3002
@@ -143,8 +143,8 @@ services:
   cart-service:
     build: ./cart-service
     # NO container_name for scaling
-    expose:
-      - "3003"
+    ports:
+      - "3003-3005:3003"
     environment:
       - NODE_ENV=production
       - PORT=3003
@@ -189,8 +189,8 @@ services:
   order-service:
     build: ./order-service
     # NO container_name for scaling
-    expose:
-      - "3004"
+    ports:
+      - "3004-3006:3004"
     environment:
       - NODE_ENV=production
       - PORT=3004

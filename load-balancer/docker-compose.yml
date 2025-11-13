@@ -6,9 +6,8 @@ services:
     image: haproxy:2.8-alpine
     container_name: load-balancer
     ports:
-      - "8090:80"      # HTTP
-      - "8443:443"     # HTTPS
-      - "8404:8404"    # HAProxy Stats
+      - "8090:80"
+      - "8443:443"
     volumes:
       - ./load-balancer/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
@@ -16,10 +15,8 @@ services:
     networks:
       - ecommerce-network
     restart: unless-stopped
-    dns:
-      - 127.0.0.11  # Docker's embedded DNS server
 
-  # API Gateway - Nginx (SCALABLE)
+  # API Gateway - Nginx (SCALABLE - no container_name)
   api-gateway:
     build: ./api-gateway
     # NO container_name - allows scaling
@@ -34,19 +31,17 @@ services:
     networks:
       - ecommerce-network
     restart: unless-stopped
-    # Expose ports internally only (not to host)
+    # Expose port internally (not to host)
     expose:
       - "80"
       - "443"
-    deploy:
-      replicas: 3
 
-  # User Service (SCALABLE)
+  # User Service
   user-service:
     build: ./user-service
-    # NO container_name for scaling
-    expose:
-      - "3001"
+    container_name: user-service
+    ports:
+      - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -59,19 +54,6 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=user-service
       - KAFKA_GROUP_ID=user-service-group
-      # Service URLs
-      - PRODUCT_SERVICE_URL=http://product-service:3002
-      - CART_SERVICE_URL=http://cart-service:3003
-      - ORDER_SERVICE_URL=http://order-service:3004
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
-      # Auth Config
-      - AUTH_FALLBACK_ENABLED=true
-      - AUTH_CACHE_ENABLED=true
-      - AUTH_CACHE_TTL=300
     depends_on:
       kafka-1:
         condition: service_healthy
@@ -89,15 +71,13 @@ services:
     volumes:
       - ./user-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 3
 
-  # Product Service (SCALABLE)
+  # Product Service
   product-service:
     build: ./product-service
-    # NO container_name for scaling
-    expose:
-      - "3002"
+    container_name: product-service
+    ports:
+      - "3002:3002"
     environment:
       - NODE_ENV=production
       - PORT=3002
@@ -110,15 +90,6 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=product-service
       - KAFKA_GROUP_ID=product-service-group
-      # Service URLs
-      - USER_SERVICE_URL=http://user-service:3001
-      - CART_SERVICE_URL=http://cart-service:3003
-      - ORDER_SERVICE_URL=http://order-service:3004
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
     depends_on:
       kafka-1:
         condition: service_healthy
@@ -136,15 +107,13 @@ services:
     volumes:
       - ./product-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 3
 
-  # Cart Service (SCALABLE)
+  # Cart Service
   cart-service:
     build: ./cart-service
-    # NO container_name for scaling
-    expose:
-      - "3003"
+    container_name: cart-service
+    ports:
+      - "3003:3003"
     environment:
       - NODE_ENV=production
       - PORT=3003
@@ -152,19 +121,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
-      # Service URLs
-      - USER_SERVICE_URL=http://user-service:3001
       - PRODUCT_SERVICE_URL=http://product-service:3002
-      - ORDER_SERVICE_URL=http://order-service:3004
       - ENABLE_KAFKA=true
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=cart-service
       - KAFKA_GROUP_ID=cart-service-group
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
     depends_on:
       kafka-1:
         condition: service_healthy
@@ -182,19 +143,16 @@ services:
     volumes:
       - ./cart-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 3
 
-  # Order Service (SCALABLE)
+  # Order Service
   order-service:
     build: ./order-service
-    # NO container_name for scaling
-    expose:
-      - "3004"
+    container_name: order-service
+    ports:
+      - "3004:3004"
     environment:
       - NODE_ENV=production
       - PORT=3004
-      - SERVICE_NAME=order-service
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=orderdb
@@ -207,21 +165,6 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=order-service
       - KAFKA_GROUP_ID=order-service-group
-      # Service URLs
-      - USER_SERVICE_URL=http://user-service:3001
-      - PRODUCT_SERVICE_URL=http://product-service:3002
-      - CART_SERVICE_URL=http://cart-service:3003
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - SERVICE_CALL_RETRY_DELAY=1000
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
-      - CIRCUIT_BREAKER_RESET_TIMEOUT=30000
-      # Auth Config
-      - AUTH_FALLBACK_ENABLED=true
-      - AUTH_CACHE_ENABLED=true
-      - AUTH_CACHE_TTL=300
     depends_on:
       kafka-1:
         condition: service_healthy
@@ -239,8 +182,6 @@ services:
     volumes:
       - ./order-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 3
 
   # MongoDB for User Service
   mongo-user:
@@ -485,15 +426,26 @@ networks:
     driver: bridge
 
 volumes:
+  # Mongo volumes
   mongo-user-data:
   mongo-product-data:
   mongo-cart-data:
+  
+  # Redis volume
   redis-data:
+  
+  # MySQL volume
   mysql-data:
+  
+  # Monitoring volumes
   prometheus-data:
   grafana-data:
+  
+  # Zookeeper volumes
   zookeeper_data:
   zookeeper_logs:
+  
+  # Kafka volumes
   kafka_1_data:
   kafka_2_data:
   kafka_3_data:

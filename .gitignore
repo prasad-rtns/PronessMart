@@ -22,7 +22,6 @@ yarn-error.log*
 *.log
 Ignore/
 Application_Scaling/
-load-balancer/
 
 # Temporary files
 tmp/
