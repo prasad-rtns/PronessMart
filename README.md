@@ -8,6 +8,7 @@
 
 ## 🏗️ Architecture
 
+- **HAPRoxy**: Load balancer
 - **API Gateway**: Nginx (Single point of contact)
 - **Microservices**: User, Product, Cart, Order
 - **Databases**: MongoDB (User, Product, Cart), MySQL (Order), Redis (Cache)
