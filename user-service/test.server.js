@@ -11,9 +11,8 @@ const logger = require('./utils/logger');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
+ 
 const mongoose = require('mongoose');
-
-const app = express();
 if (process.env.NODE_ENV !== 'test') {
   logger.info(`IF process.env.NODE_ENV ${process.env.NODE_ENV}`);
   const app = express();
@@ -25,14 +24,14 @@ const PORT = process.env.PORT || 3001;
 
 // Collect Prometheus metrics
 collectDefaultMetrics({ register });
-
+logger.info(`PORT ${process.env.PORT}`);
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
-
+logger.info(`requestLogger ${process.env.NODE_ENV}`);
 // Swagger documentation
 app.use('/api/v1/users/docs/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -68,23 +67,6 @@ app.use('/api/v1/users', userRoutes);
 // Error handler
 app.use(errorHandler);
 
-// --- Add this section ---
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo-user:27017/userdb';
-
-// Connect to MongoDB and start the server
-if (process.env.NODE_ENV !== 'test') {
-  connectDB(MONGO_URL)
-    .then(() => {
-      app.listen(PORT, '0.0.0.0', () => {
-        logger.info(`✅ User Service running on port ${PORT}`);
-        logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/users/docs`);
-      });
-    })
-    .catch((err) => {
-      logger.error('❌ Failed to connect to MongoDB:', err);
-      process.exit(1);
-    });
-}
 // Optional: friendly root route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -94,3 +76,29 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// --- Add this section ---
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo-user:27017/userdb';
+
+// Connect to MongoDB and start the server
+const startServer = async () => {
+  try {
+    logger.info(`startServer service running on port ${PORT}`);  
+    // Connect to MongoDB
+    await connectDB();
+    logger.info('Database connected successfully');
+
+    // Start server
+    app.listen(PORT, () => {
+      logger.info(`User service running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+    logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/users/docs`);
+  } catch (error) {
+    logger.info(`startServer service running on port ${PORT}`);  
+    logger.error(`Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+startServer();

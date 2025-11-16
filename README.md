@@ -458,3 +458,15 @@ kafka-topics --create --topic cart-events --partitions 3 --replication-factor 2
 kafka-topics --create --topic analytics-events --partitions 3 --replication-factor 2
 kafka-topics --create --topic notification-events --partitions 3 --replication-factor 2
 ```
+
+## SonarQube
+```
+cd ../user-service && npm run sonar:scan
+
+ ~/sonar-scanner-cli-7.3.0.5189-windows-x64/bin/sonar-scanner.bat -D"sonar.projectKey=Proness-User-Service" \
+-D"sonar.sources=." \
+-D"sonar.tests=tests" \
+-D"sonar.exclusions=**/tests/**" \
+-D"sonar.host.url=http://localhost:9000" \
+-D"sonar.token=sqa_05a052f75888324b5444df9a95280ae5ecd7ecae"
+```

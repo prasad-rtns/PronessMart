@@ -65,3 +65,6 @@ ssl/
 *.crt
 *.key
 *.csr
+.sonarqube/
+coverage/
+test-report.xml

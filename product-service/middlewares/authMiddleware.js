@@ -2,7 +2,7 @@ const jwt = require('../utils/jwt');
 const logger = require('../utils/logger');
 const axios = require('axios');
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user-service:3001';
 
 const authMiddleware = async (req, res, next) => {
   try {

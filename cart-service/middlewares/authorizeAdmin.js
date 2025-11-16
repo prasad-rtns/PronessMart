@@ -9,6 +9,7 @@ module.exports = function authorizeAdmin(req, res, next) {
         message: 'Not authorized — user not authenticated'
       });
     }
+    logger.info(`🧹 req.user: ${req.user}`);
     // ✅ Check for admin role
     if (req.user.role && req.user.role.toLowerCase() === 'admin') {
       return next();
