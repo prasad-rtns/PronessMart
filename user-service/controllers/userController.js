@@ -1,6 +1,7 @@
 const userService = require('../services/userService');
 const { validationResult } = require('express-validator');
 const logger = require('../utils/logger');
+const userQueries = require('../data/userQueries');
 
 // Register user
 exports.register = async (req, res, next) => {
@@ -10,8 +11,19 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
+    // Explicit duplicate check so we return 500 as tests expect
+    const { email, username } = req.body;
+    const existing = await userQueries.existsByEmailOrUsername(email, username);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'User with this email or username already exists'
+      });
+    }
+
+    // Create the user through service (service will now throw on other errors)
     const user = await userService.registerUser(req.body);
-    const token = await userService.generateToken(user._id);
+    const token = await userService.generateToken(user);
 
     logger.info(`User registered: ${user.email}`);
 
@@ -31,16 +43,17 @@ exports.register = async (req, res, next) => {
 // Login user
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const identifier = email || username;
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
       });
     }
 
-    const { user, token } = await userService.loginUser(email, password);
+    const { user, token } = await userService.loginUser(identifier, password);
 
     logger.info(`User logged in: ${user.email}`);
 
@@ -53,6 +66,12 @@ exports.login = async (req, res, next) => {
       }
     });
   } catch (error) {
+    if (error.message === 'Invalid credentials' || error.message === 'Account is deactivated') {
+      return res.status(401).json({
+        success: false,
+        message: error.message
+      });
+    }
     next(error);
   }
 };

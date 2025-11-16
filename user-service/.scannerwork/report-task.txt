@@ -1,0 +1,6 @@
+projectKey=Proness-User-Service
+serverUrl=http://localhost:9000
+serverVersion=10.7.0.96327
+dashboardUrl=http://localhost:9000/dashboard?id=Proness-User-Service
+ceTaskId=484fe523-0bab-44c3-9ad4-6e623ccf9520
+ceTaskUrl=http://localhost:9000/api/ce/task?id=484fe523-0bab-44c3-9ad4-6e623ccf9520

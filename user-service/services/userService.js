@@ -26,6 +26,9 @@ class UserService {
         role: userData.role
       });
 
+      // Remove password before returning
+      if (user && user.password) user.password = undefined;
+
       return user;
     } catch (error) {
       logger.error(`Error registering user: ${error.message}`);
