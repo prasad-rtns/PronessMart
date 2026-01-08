@@ -39,7 +39,7 @@ services:
       - "80"
       - "443"
     deploy:
-      replicas: 3
+      replicas: 1
 
   # User Service (SCALABLE)
   user-service:
@@ -75,10 +75,6 @@ services:
     depends_on:
       kafka-1:
         condition: service_healthy
-      kafka-2:
-        condition: service_healthy
-      kafka-3:
-        condition: service_healthy
       mongo-user:
         condition: service_started
       redis:
@@ -90,7 +86,7 @@ services:
       - ./user-service:/app
       - /app/node_modules
     deploy:
-      replicas: 3
+      replicas: 1
 
   # Product Service (SCALABLE)
   product-service:
@@ -122,10 +118,6 @@ services:
     depends_on:
       kafka-1:
         condition: service_healthy
-      kafka-2:
-        condition: service_healthy
-      kafka-3:
-        condition: service_healthy
       mongo-product:
         condition: service_started
       redis:
@@ -137,7 +129,7 @@ services:
       - ./product-service:/app
       - /app/node_modules
     deploy:
-      replicas: 3
+      replicas: 1
 
   # Cart Service (SCALABLE)
   cart-service:
@@ -168,10 +160,6 @@ services:
     depends_on:
       kafka-1:
         condition: service_healthy
-      kafka-2:
-        condition: service_healthy
-      kafka-3:
-        condition: service_healthy
       mongo-cart:
         condition: service_started
       redis:
@@ -183,7 +171,7 @@ services:
       - ./cart-service:/app
       - /app/node_modules
     deploy:
-      replicas: 3
+      replicas: 1
 
   # Order Service (SCALABLE)
   order-service:
@@ -225,10 +213,6 @@ services:
     depends_on:
       kafka-1:
         condition: service_healthy
-      kafka-2:
-        condition: service_healthy
-      kafka-3:
-        condition: service_healthy
       mysql:
         condition: service_started
       redis:
@@ -240,7 +224,7 @@ services:
       - ./order-service:/app
       - /app/node_modules
     deploy:
-      replicas: 3
+      replicas: 1
 
   # MongoDB for User Service
   mongo-user:

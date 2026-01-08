@@ -12,6 +12,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
 const cartKafkaConsumer = require('./services/cartKafkaConsumer');
+const requestMetrics = require('./middlewares/requestMetrics');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -33,6 +34,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+app.use(requestMetrics);
 
 // Swagger Documentation
 app.use('/api/v1/cart/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

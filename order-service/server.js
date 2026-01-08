@@ -12,6 +12,8 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
 const healthRoutes = require('./routes/healthRoutes');
+const healthController = require('./controllers/healthController');
+const requestMetrics = require('./middlewares/requestMetrics');
 
 const app = express();
 const PORT = process.env.PORT || 3004;
@@ -44,7 +46,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+app.use(requestMetrics);
 
+app.get('/health', healthController.healthCheck);
 // Swagger setup
 app.use('/api/v1/orders/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
@@ -78,6 +82,7 @@ app.get('/metrics', async (req, res) => {
 app.use('/api/v1/orders', orderRoutes);
 // Register health routes (before other routes)
 app.use('/api/v1/orders/health', healthRoutes);
+
 // Error handler
 app.use(errorHandler);
 
@@ -93,6 +98,7 @@ app.listen(PORT, () => {
   logger.info(`🚀 ${SERVICE_NAME} running on port ${PORT}`);
   logger.info(`📘 Swagger docs: http://localhost:${PORT}/api/v1/orders/docs`);
   logger.info(`💓 Health check: http://localhost:${PORT}/health`);
+  logger.info(`Handled by ${process.env.HOSTNAME}`);
 });
 
 module.exports = app;
