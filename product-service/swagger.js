@@ -85,7 +85,7 @@ const options = {
           properties: {
             _id: {
               type: 'string',
-              example: '664f9b86aab2a19b13df0f88',
+              example: 'electronics',
             },
             name: {
               type: 'string',
@@ -272,7 +272,7 @@ const options = {
         ProductMultiReg: {
           type: 'object',
           properties: {
-            _id: { type: 'string', example: '664f9b86aab2a19b13df0f88' },
+            _id: { type: 'string', example: 'electronics' },
             name: { type: 'string', example: 'Wireless Headphones Pro' },
             slug: { type: 'string', example: 'wireless-headphones-pro' },
             description: { type: 'string', example: 'Premium wireless headphones with ANC' },
@@ -364,8 +364,8 @@ const options = {
             name: { type: 'string', example: 'Wireless Headphones Pro' },
             description: { type: 'string', example: 'Premium wireless headphones with ANC' },
             shortDescription: { type: 'string', example: 'Premium headphones' },
-            category: { type: 'string', example: '664f9b86aab2a19b13df0f88' },
-            subcategory: { type: 'string', example: '664f9b86aab2a19b13df0f89' },
+            category: { type: 'string', example: 'electronics' },
+            subcategory: { type: 'string', example: 'computer-accessories' },
             brand: { type: 'string', example: 'AudioTech' },
             sku: { type: 'string', example: 'WH-PRO-001' },
             barcode: { type: 'string', example: '1234567890123' },

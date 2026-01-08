@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
-const authMiddleware = require('../middlewares/authMiddleware');
+//const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware, authorizeRoles } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -74,7 +75,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *               success: true
  *               data:
  *                 products:
- *                   - _id: "664f9b86aab2a19b13df0f88"
+ *                   - _id: "electronics"
  *                     name: "Wireless Mouse"
  *                     price: 999.99
  *                     category: "electronics"
@@ -107,7 +108,7 @@ router.get('/', productController.getAllProducts);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *     responses:
  *       200:
  *         description: Product details
@@ -139,7 +140,7 @@ router.get('/:productId', productController.getProductById);
  * @swagger
  * /api/v1/products:
  *   post:
- *     summary: Create a new product (V1)
+ *     summary: Create a new product (Admin only) (V1)
  *     description: Create a new product (Admin only)
  *     tags: [Products V1]
  *     security:
@@ -198,13 +199,13 @@ router.get('/:productId', productController.getProductById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', authMiddleware, productController.createProduct);
+router.post('/', authMiddleware, authorizeRoles(['admin']), productController.createProduct);
 
 /**
  * @swagger
  * /api/v1/products/{productId}:
  *   put:
- *     summary: Update a product (V1)
+ *     summary: Update a product (Admin only) (V1)
  *     description: Update an existing product (Admin only)
  *     tags: [Products V1]
  *     security:
@@ -216,7 +217,7 @@ router.post('/', authMiddleware, productController.createProduct);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *     requestBody:
  *       required: true
  *       content:
@@ -249,13 +250,13 @@ router.post('/', authMiddleware, productController.createProduct);
  *       401:
  *         description: Unauthorized
  */
-router.put('/:productId', authMiddleware, productController.updateProduct);
+router.put('/:productId', authMiddleware, authorizeRoles(['admin']), productController.updateProduct);
 
 /**
  * @swagger
  * /api/v1/products/{productId}:
  *   delete:
- *     summary: Delete product (V1)
+ *     summary: Delete product (Admin only) (V1)
  *     description: Delete a product permanently (Admin only)
  *     tags: [Products V1]
  *     security:
@@ -267,7 +268,7 @@ router.put('/:productId', authMiddleware, productController.updateProduct);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *     responses:
  *       200:
  *         description: Product deleted successfully
@@ -287,6 +288,6 @@ router.put('/:productId', authMiddleware, productController.updateProduct);
  *       401:
  *         description: Unauthorized
  */
-router.delete('/:productId', authMiddleware, productController.deleteProduct);
+router.delete('/:productId', authMiddleware, authorizeRoles(['admin']), productController.deleteProduct);
 
 module.exports = router;

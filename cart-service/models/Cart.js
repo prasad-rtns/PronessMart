@@ -177,7 +177,7 @@ cartSchema.pre('validate', function(next) {
 });
 
 // Indexes for performance
-cartSchema.index({ userId: 1 }, { unique: true, sparse: true });
+//cartSchema.index({ userId: 1 }, { unique: true, sparse: true });
 cartSchema.index({ sessionId: 1 }, { unique: true, sparse: true });
 cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 cartSchema.index({ lastActivity: 1 });

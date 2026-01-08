@@ -12,6 +12,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const { register, collectDefaultMetrics } = require('prom-client');
 const mongoose = require('mongoose');
+const requestMetrics = require('./middlewares/requestMetrics');
 
 const app = express();
 if (process.env.NODE_ENV !== 'test') {
@@ -32,6 +33,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+app.use(requestMetrics);
 
 // Swagger documentation
 app.use('/api/v1/users/docs/', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

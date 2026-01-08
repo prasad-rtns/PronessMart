@@ -11,6 +11,7 @@ docker-compose down
 
 # Start with 3 instances
 docker-compose up -d --scale api-gateway=3
+docker-compose up -d --no-deps --scale order-service=2 order-service
 
 # Verify
 docker-compose ps

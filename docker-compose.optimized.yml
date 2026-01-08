@@ -1,14 +1,19 @@
 version: '3.8'
 
+# Optimized and cleaned docker-compose.yml
+# Option A: kept the FIRST definition for each service and removed duplicates
+# docker-compose -f docker-compose.optimized.yml up -d
+# docker-compose -f docker-compose.optimized.yml up -d --scale user-service=5 --scale product-service=5
+
 services:
-  # Load Balancer (HAProxy)
+  # Load Balancer (HAProxy) - dynamic backend discovery via Docker DNS
   load-balancer:
     image: haproxy:2.8-alpine
     container_name: load-balancer
     ports:
       - "8090:80"      # HTTP
       - "8443:443"     # HTTPS
-      - "8404:8404"    # HAProxy Stats
+      - "8404:8404"    # HAProxy Stats (if configured)
     volumes:
       - ./load-balancer/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     depends_on:
@@ -17,12 +22,11 @@ services:
       - ecommerce-network
     restart: unless-stopped
     dns:
-      - 127.0.0.11  # Docker's embedded DNS server
+      - 127.0.0.11
 
-  # API Gateway - Nginx (SCALABLE)
+  # API Gateway (Nginx) - keep scalable (no container_name)
   api-gateway:
     build: ./api-gateway
-    # NO container_name - allows scaling
     volumes:
       - ./api-gateway/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./api-gateway/ssl:/etc/nginx/ssl:ro
@@ -34,17 +38,18 @@ services:
     networks:
       - ecommerce-network
     restart: unless-stopped
-    # Expose ports internally only (not to host)
     expose:
       - "80"
       - "443"
-    deploy:
-      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:80/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # User Service (SCALABLE)
+  # User Service (scalable)
   user-service:
     build: ./user-service
-    # NO container_name for scaling
     expose:
       - "3001"
     environment:
@@ -59,21 +64,15 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=user-service
       - KAFKA_GROUP_ID=user-service-group
-      # Service URLs
       - PRODUCT_SERVICE_URL=http://product-service:3002
       - CART_SERVICE_URL=http://cart-service:3003
       - ORDER_SERVICE_URL=http://order-service:3004
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
-      # Auth Config
-      - AUTH_FALLBACK_ENABLED=true
-      - AUTH_CACHE_ENABLED=true
-      - AUTH_CACHE_TTL=300
     depends_on:
       kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
       mongo-user:
         condition: service_started
@@ -85,13 +84,15 @@ services:
     volumes:
       - ./user-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Product Service (SCALABLE)
+  # Product Service (scalable)
   product-service:
     build: ./product-service
-    # NO container_name for scaling
     expose:
       - "3002"
     environment:
@@ -101,22 +102,19 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRE=7d
       - ENABLE_KAFKA=true
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=product-service
       - KAFKA_GROUP_ID=product-service-group
-      # Service URLs
       - USER_SERVICE_URL=http://user-service:3001
       - CART_SERVICE_URL=http://cart-service:3003
       - ORDER_SERVICE_URL=http://order-service:3004
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
     depends_on:
       kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
       mongo-product:
         condition: service_started
@@ -128,13 +126,15 @@ services:
     volumes:
       - ./product-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Cart Service (SCALABLE)
+  # Cart Service (scalable)
   cart-service:
     build: ./cart-service
-    # NO container_name for scaling
     expose:
       - "3003"
     environment:
@@ -144,7 +144,6 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
-      # Service URLs
       - USER_SERVICE_URL=http://user-service:3001
       - PRODUCT_SERVICE_URL=http://product-service:3002
       - ORDER_SERVICE_URL=http://order-service:3004
@@ -152,13 +151,12 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=cart-service
       - KAFKA_GROUP_ID=cart-service-group
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
     depends_on:
       kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
       mongo-cart:
         condition: service_started
@@ -170,13 +168,15 @@ services:
     volumes:
       - ./cart-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3003/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Order Service (SCALABLE)
+  # Order Service (scalable)
   order-service:
     build: ./order-service
-    # NO container_name for scaling
     expose:
       - "3004"
     environment:
@@ -195,23 +195,15 @@ services:
       - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
       - KAFKA_CLIENT_ID=order-service
       - KAFKA_GROUP_ID=order-service-group
-      # Service URLs
       - USER_SERVICE_URL=http://user-service:3001
       - PRODUCT_SERVICE_URL=http://product-service:3002
       - CART_SERVICE_URL=http://cart-service:3003
-      # Circuit Breaker Config
-      - SERVICE_CALL_TIMEOUT=5000
-      - SERVICE_CALL_RETRIES=3
-      - SERVICE_CALL_RETRY_DELAY=1000
-      - CIRCUIT_BREAKER_THRESHOLD=5
-      - CIRCUIT_BREAKER_TIMEOUT=60000
-      - CIRCUIT_BREAKER_RESET_TIMEOUT=30000
-      # Auth Config
-      - AUTH_FALLBACK_ENABLED=true
-      - AUTH_CACHE_ENABLED=true
-      - AUTH_CACHE_TTL=300
     depends_on:
       kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
         condition: service_healthy
       mysql:
         condition: service_started
@@ -223,22 +215,24 @@ services:
     volumes:
       - ./order-service:/app
       - /app/node_modules
-    deploy:
-      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3004/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # MongoDB for User Service
+  # MongoDB instances
   mongo-user:
     image: mongo:7.0
     container_name: mongo-user
     ports:
-      - "27016:27017"
+      - "27017:27017"
     volumes:
       - mongo-user-data:/data/db
     networks:
       - ecommerce-network
     restart: unless-stopped
 
-  # MongoDB for Product Service
   mongo-product:
     image: mongo:7.0
     container_name: mongo-product
@@ -250,7 +244,6 @@ services:
       - ecommerce-network
     restart: unless-stopped
 
-  # MongoDB for Cart Service
   mongo-cart:
     image: mongo:7.0
     container_name: mongo-cart
@@ -290,7 +283,7 @@ services:
       - ecommerce-network
     restart: unless-stopped
 
-  # Zookeeper for Kafka
+  # Zookeeper & Kafka cluster (kept the FIRST definitions)
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: ecommerce-zookeeper
@@ -311,7 +304,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka Broker 1
   kafka-1:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecommerce-kafka-1
@@ -343,7 +335,6 @@ services:
       retries: 5
       start_period: 60s
 
-  # Kafka Broker 2
   kafka-2:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecommerce-kafka-2
@@ -375,7 +366,6 @@ services:
       retries: 5
       start_period: 60s
 
-  # Kafka Broker 3
   kafka-3:
     image: confluentinc/cp-kafka:7.5.0
     container_name: ecommerce-kafka-3
@@ -435,7 +425,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -456,15 +446,15 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
     networks:
       - ecommerce-network
     restart: unless-stopped
 
-  # SonarQube PostgreSQL Database
+  # SonarQube & DB
   sonarqube-db:
     image: postgres:15-alpine
     container_name: sonarqube-db
@@ -478,7 +468,6 @@ services:
       - ecommerce-network
     restart: unless-stopped
 
-  # SonarQube Server
   sonarqube:
     image: sonarqube:10-community
     container_name: sonarqube
@@ -493,7 +482,7 @@ services:
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
-      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-logs:/opt/sonarqube/log
     networks:
       - ecommerce-network
     restart: unless-stopped

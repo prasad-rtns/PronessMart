@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productMultiRegController');
-const authMiddleware = require('../middlewares/authMiddleware');
+//const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware, authorizeRoles } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -32,7 +33,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *         schema:
  *           type: string
  *         description: Filter by category ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *       - in: query
  *         name: subcategory
  *         schema:
@@ -113,7 +114,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *             example:
  *               success: true
  *               data:
- *                 - _id: "664f9b86aab2a19b13df0f88"
+ *                 - _id: "electronics"
  *                   name: "Wireless Headphones Pro"
  *                   slug: "wireless-headphones-pro"
  *                   brand: "AudioTech"
@@ -156,7 +157,7 @@ router.get('/', productController.getProducts);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *       - in: query
  *         name: region
  *         schema:
@@ -200,7 +201,7 @@ router.get('/:id', productController.getProduct);
  *         schema:
  *           type: string
  *         description: Category Code
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *       - in: query
  *         name: region
  *         schema:
@@ -250,8 +251,8 @@ router.get('/category/:categoryId', productController.getProductsByCategory);
  *             name: "Wireless Headphones Pro"
  *             description: "Premium wireless headphones with active noise cancellation"
  *             shortDescription: "Premium wireless headphones"
- *             category: "664f9b86aab2a19b13df0f88"
- *             subcategory: "664f9b86aab2a19b13df0f89"
+ *             category: "electronics"
+ *             subcategory: "computer-accessories"
  *             brand: "AudioTech"
  *             sku: "WH-PRO-001"
  *             barcode: "1234567890123"
@@ -388,7 +389,7 @@ router.put('/:id', authMiddleware, productController.updateProduct);
  *         schema:
  *           type: string
  *         description: Product ID
- *         example: 664f9b86aab2a19b13df0f88
+ *         example: electronics
  *       - in: path
  *         name: region
  *         required: true
