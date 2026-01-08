@@ -92,11 +92,15 @@ class ProductQueries {
 
       // Add isActive filter by default
       const queryFilters = { ...filters, isActive: true };
+      logger.debug(
+        `🧩 queryFilters:\n${JSON.stringify(queryFilters, null, 2)}`
+      );
 
       const products = await Product.find(queryFilters)
         .skip(skip)
         .limit(limit)
-        .sort(sort);
+        .sort(sort)
+        .lean();
 
       const total = await Product.countDocuments(queryFilters);
 
