@@ -1,0 +1,57 @@
+NODE_ENV=development
+PORT=3004
+SERVICE_NAME=order-service
+
+# MySQL
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=orderdb
+MYSQL_USER=root
+MYSQL_PASSWORD=8f8z/8zXt9LcnykJUvXTFQ==
+
+# JWT
+JWT_SECRET=D8xR6OwlWftxzw7BLPY1N/GLEgAAK3xOYt+HCZMglL8=
+SERVICE_AUTH_TOKEN=your-service-token
+
+# Kafka
+KAFKA_BROKERS=localhost:9092,localhost:9093,localhost:9094
+KAFKA_CLIENT_ID=order-service
+KAFKA_GROUP_ID=order-service-group
+ENABLE_KAFKA=true
+
+# Logging
+LOG_LEVEL=info
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=redis_password
+
+# User Service URL
+USER_SERVICE_URL=http://user-service:3001
+PRODUCT_SERVICE_URL=http://product-service:3002
+CART_SERVICE_URL=http://cart-service:3003
+# or for production:
+# USER_SERVICE_URL=https://user-service.yourdomain.com
+
+# ============================================
+# OPTIONAL: Circuit Breaker Configuration
+# ============================================
+# Timeout for service-to-service calls (milliseconds)
+# Service Communication
+SERVICE_CALL_TIMEOUT=5000
+SERVICE_CALL_RETRIES=3
+SERVICE_CALL_RETRY_DELAY=1000
+
+# Circuit Breaker
+CIRCUIT_BREAKER_THRESHOLD=5
+CIRCUIT_BREAKER_TIMEOUT=60000
+CIRCUIT_BREAKER_RESET_TIMEOUT=30000
+
+# Authentication
+AUTH_FALLBACK_ENABLED=true
+AUTH_CACHE_ENABLED=true
+AUTH_CACHE_TTL=300
+
+# SonarQube Token
+SONAR_TOKEN=sqa_05a052f75888324b5444df9a95280ae5ecd7ecae
