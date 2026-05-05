@@ -1,0 +1,309 @@
+version: "3.8"
+
+services:
+  redis:
+    image: ${REDIS_IMAGE}
+    command: redis-server --appendonly yes
+    ports:
+      - target: 6379
+        published: ${REDIS_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - redis-data:/data
+    networks:
+      - ecommerce-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  zookeeper:
+    image: ${ZOOKEEPER_IMAGE}
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - target: 2181
+        published: ${ZOOKEEPER_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      ecommerce-network:
+        aliases:
+          - zookeeper
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  kafka-1:
+    image: ${KAFKA_IMAGE}
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://${SERVER_HOST}:${KAFKA_1_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+    ports:
+      - target: 9092
+        published: ${KAFKA_1_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+    networks:
+      ecommerce-network:
+        aliases:
+          - kafka-1
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 29092"]
+      interval: 60s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  kafka-2:
+    image: ${KAFKA_IMAGE}
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29093,EXTERNAL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29093,EXTERNAL://${SERVER_HOST}:${KAFKA_2_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+    ports:
+      - target: 9093
+        published: ${KAFKA_2_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    networks:
+      ecommerce-network:
+        aliases:
+          - kafka-2
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 29093"]
+      interval: 60s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  kafka-3:
+    image: ${KAFKA_IMAGE}
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29094,EXTERNAL://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29094,EXTERNAL://${SERVER_HOST}:${KAFKA_3_PORT}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+      KAFKA_OPTS: "-XX:MaxDirectMemorySize=512M"
+    ports:
+      - target: 9094
+        published: ${KAFKA_3_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    networks:
+      ecommerce-network:
+        aliases:
+          - kafka-3
+    healthcheck:
+      test: ["CMD", "bash", "-c", "nc -z localhost 29094"]
+      interval: 60s
+      timeout: 10s
+      retries: 10
+      start_period: 600s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  kafka-ui:
+    image: ${KAFKA_UI_IMAGE}
+    environment:
+      KAFKA_CLUSTERS_0_NAME: services
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:29092,kafka-2:29093,kafka-3:29094
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      SERVER_SERVLET_CONTEXT_PATH: ${KAFKA_UI_BASE_PATH}
+    ports:
+      - target: 8080
+        published: ${KAFKA_UI_PORT}
+        protocol: tcp
+        mode: ingress
+    networks:
+      - ecommerce-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-lifecycle
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION}
+      - --web.external-url=http://${SERVER_HOST}${PROMETHEUS_BASE_PATH}/
+      - --web.route-prefix=${PROMETHEUS_BASE_PATH}
+    ports:
+      - target: 9090
+        published: ${PROMETHEUS_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - ${DEPLOY_ROOT}/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${DEPLOY_ROOT}/monitoring/prometheus/alerts-prod.yml:/etc/prometheus/alerts-prod.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/prometheus/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+  node-exporter:
+    image: ${NODE_EXPORTER_IMAGE}
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|run)($$|/)
+    ports:
+      - target: 9100
+        published: ${NODE_EXPORTER_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - ecommerce-network
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+
+  cadvisor:
+    image: ${CADVISOR_IMAGE}
+    ports:
+      - target: 8080
+        published: ${CADVISOR_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - ecommerce-network
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    user: "0"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://${SERVER_HOST}${GRAFANA_BASE_PATH}/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    ports:
+      - target: 3000
+        published: ${GRAFANA_PORT}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ${DEPLOY_ROOT}/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ${DEPLOY_ROOT}/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+
+networks:
+  ecommerce-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  redis-data:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,319 @@
+groups:
+  - name: services_server_health
+    interval: 30s
+    rules:
+      - alert: TargetDown
+        expr: up{job=~"prometheus|node-exporter|cadvisor|grafana|master-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Monitoring target is down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} on __SERVER_HOST__ has been down for more than 2 minutes."
+
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High host CPU usage"
+          description: "Host CPU usage on {{ $labels.instance }} is above 85% for 10 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostCriticalCpuUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Critical host CPU usage"
+          description: "Host CPU usage on {{ $labels.instance }} is above 95% for 5 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High host memory usage"
+          description: "Host memory usage on {{ $labels.instance }} is above 85% for 10 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostCriticalMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Critical host memory usage"
+          description: "Host memory usage on {{ $labels.instance }} is above 95% for 5 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostHighSwapUsage
+        expr: ((1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 50) and node_memory_SwapTotal_bytes > 0
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High host swap usage"
+          description: "Host swap usage on {{ $labels.instance }} is above 50%. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostLowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"}) * 100 < 15
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Low disk space"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 15% free space. Current free: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostCriticalDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"}) * 100 < 8
+        for: 5m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Critical disk space"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 8% free space. Current free: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostLowInodes
+        expr: (node_filesystem_files_free{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"} / node_filesystem_files{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs",mountpoint!~"/run.*|/var/lib/docker/.*"}) * 100 < 10
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Low filesystem inodes"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has less than 10% free inodes. Current free: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostFilesystemReadOnly
+        expr: node_filesystem_readonly{fstype!~"tmpfs|overlay|squashfs|aufs|nsfs"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Filesystem is read-only"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is mounted read-only."
+
+      - alert: HostHighDiskIoWait
+        expr: avg by (instance) (rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100 > 20
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High disk I/O wait"
+          description: "Host {{ $labels.instance }} has I/O wait above 20% for 10 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: HostNetworkErrors
+        expr: rate(node_network_receive_errs_total{device!~"lo|veth.*|docker.*|br-.*"}[5m]) + rate(node_network_transmit_errs_total{device!~"lo|veth.*|docker.*|br-.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Network interface errors"
+          description: "Network interface {{ $labels.device }} on {{ $labels.instance }} is reporting receive or transmit errors."
+
+      - alert: HostRebooted
+        expr: time() - node_boot_time_seconds < 600
+        for: 1m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Host recently rebooted"
+          description: "Host {{ $labels.instance }} rebooted within the last 10 minutes."
+
+  - name: services_container_health
+    interval: 30s
+    rules:
+      - alert: ContainerHighCpuUsage
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High container CPU usage"
+          description: "Container {{ $labels.name }} CPU usage is above 80% for 10 minutes. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: ContainerHighMemoryUsage
+        expr: ((container_memory_working_set_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""}) * 100 > 85) and container_spec_memory_limit_bytes{name!=""} > 0
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High container memory usage"
+          description: "Container {{ $labels.name }} memory usage is above 85% of its limit. Current value: {{ printf \"%.2f\" $value }}%."
+
+      - alert: ContainerHighNetworkTraffic
+        expr: sum by (name) (rate(container_network_receive_bytes_total{name!=""}[5m]) + rate(container_network_transmit_bytes_total{name!=""}[5m])) > 104857600
+        for: 10m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "High container network throughput"
+          description: "Container {{ $labels.name }} network throughput is above 100 MB/s for 10 minutes."
+
+  - name: services_platform_health
+    interval: 30s
+    rules:
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Prometheus config reload failed"
+          description: "Prometheus failed to reload its configuration or alert rules."
+
+      - alert: PrometheusRuleEvaluationFailures
+        expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Prometheus rule evaluation failures"
+          description: "Prometheus has rule evaluation failures in the last 5 minutes."
+
+      - alert: RedisServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_redis"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "redis"
+        annotations:
+          summary: "Redis Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_redis. Check docker stack ps services-integration."
+
+      - alert: ZookeeperServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_zookeeper"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "zookeeper"
+        annotations:
+          summary: "Zookeeper Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_zookeeper. Check docker stack ps services-integration."
+
+      - alert: Kafka1ServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_kafka-1"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "kafka-1"
+        annotations:
+          summary: "Kafka 1 Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_kafka-1. Check docker stack ps services-integration."
+
+      - alert: Kafka2ServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_kafka-2"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "kafka-2"
+        annotations:
+          summary: "Kafka 2 Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_kafka-2. Check docker stack ps services-integration."
+
+      - alert: Kafka3ServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_kafka-3"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "kafka-3"
+        annotations:
+          summary: "Kafka 3 Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_kafka-3. Check docker stack ps services-integration."
+
+      - alert: KafkaUiServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_kafka-ui"})
+        for: 2m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+          service: "kafka-ui"
+        annotations:
+          summary: "Kafka UI Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_kafka-ui. Check docker stack ps services-integration."
+
+      - alert: PrometheusServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_prometheus"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "prometheus"
+        annotations:
+          summary: "Prometheus Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_prometheus. Check docker stack ps services-integration."
+
+      - alert: GrafanaServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_grafana"})
+        for: 2m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+          service: "grafana"
+        annotations:
+          summary: "Grafana Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_grafana. Check docker stack ps services-integration."
+
+      - alert: NodeExporterServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_node-exporter"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "node-exporter"
+        annotations:
+          summary: "Node Exporter Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_node-exporter. Host resource graphs will be unavailable."
+
+      - alert: CadvisorServiceMissing
+        expr: absent(container_last_seen{container_label_com_docker_swarm_service_name="services-integration_cadvisor"})
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+          service: "cadvisor"
+        annotations:
+          summary: "cAdvisor Swarm service is missing"
+          description: "cAdvisor is not reporting services-integration_cadvisor. Container graphs and service-presence alerts will be unavailable."
+
+      - alert: SwarmServiceStale
+        expr: time() - max by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"services-integration_(redis|zookeeper|kafka-1|kafka-2|kafka-3|kafka-ui|prometheus|grafana|node-exporter|cadvisor)"}) > 120
+        for: 2m
+        labels:
+          severity: critical
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Swarm service has stale container metrics"
+          description: "{{ $labels.container_label_com_docker_swarm_service_name }} has not been seen by cAdvisor for more than 2 minutes."
+
+      - alert: GrafanaUnavailable
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          server: "__SERVER_HOST__"
+        annotations:
+          summary: "Grafana is unavailable"
+          description: "Grafana on __SERVER_HOST__:3030 is unreachable."
