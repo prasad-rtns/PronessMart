@@ -490,3 +490,6 @@ docker service logs --tail 200 services-integration_zookeeper
 ```
 
 The production stack sets `KAFKA_HEAP_OPTS=-Xms128M -Xmx256M` and gives Kafka 5 minutes before health checks can fail the task. If the server is still memory constrained, reduce to one Kafka broker or increase server RAM.
+
+## Remove Only service-integration related containers
+`docker ps -a | grep service-integration | awk '{print $1}' | xargs docker rm -f`

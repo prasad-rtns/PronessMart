@@ -230,7 +230,7 @@ docker exec -it "$KAFKA_CONTAINER" kafka-console-producer \
 Type this message and press Enter:
 
 ```text
-payment-9001:{"paymentId":"9001","orderId":"1001","amount":1499,"action":"charge-card"}
+payment-9001:{"paymentId":"9003","orderId":"1003","amount":1499,"action":"charge-card"}
 ```
 
 Stop the producer with `Ctrl+C`.
